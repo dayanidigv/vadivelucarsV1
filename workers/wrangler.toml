@@ -5,8 +5,3 @@ compatibility_flags = ["nodejs_compat"]
 
 [build]
 command = "npm run build"
-
-[[r2_buckets]]
-binding = "R2_BUCKET"
-bucket_name = "vadivelu-cars-invoices"
-preview_bucket_name = "vadivelu-cars-invoices-preview"
