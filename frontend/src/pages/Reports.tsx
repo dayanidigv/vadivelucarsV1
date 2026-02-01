@@ -3,6 +3,8 @@ import { useEffect, useState } from "react"
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line } from "recharts"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { DollarSign, CreditCard, Activity } from "lucide-react"
+import { api } from "@/lib/api"
+import { BackButton } from "@/components/ui/BackButton"
 
 export function Reports() {
     const [data, setData] = useState<any[]>([])
@@ -11,10 +13,9 @@ export function Reports() {
     useEffect(() => {
         async function fetchData() {
             try {
-                const res = await fetch('http://localhost:8787/api/reports/revenue')
-                const json = await res.json()
-                if (json.success) {
-                    setData(json.data)
+                const response = await api.getRevenueReports()
+                if (response.success) {
+                    setData(response.data)
                 }
             } catch (error) {
                 console.error("Failed to fetch reports data", error)
@@ -33,7 +34,10 @@ export function Reports() {
 
     return (
         <div className="space-y-6">
-            <h1 className="text-3xl font-bold tracking-tight">Financial Reports</h1>
+            <div className="flex items-center gap-4">
+                <BackButton fallback="/dashboard" />
+                <h1 className="text-3xl font-bold tracking-tight">Financial Reports</h1>
+            </div>
 
             {/* Quick Stats */}
             <div className="grid gap-4 md:grid-cols-3">

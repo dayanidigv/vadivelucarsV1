@@ -1,4 +1,97 @@
-import { Document, Page, Text, View, StyleSheet, Font, Image } from '@react-pdf/renderer'
+import { Document, Page, Text, View, StyleSheet, Font } from '@react-pdf/renderer'
+
+// TypeScript Interfaces for Type Safety
+interface InvoiceItem {
+    description: string
+    quantity: number
+    rate: number
+    amount: number
+    item_type: 'labor' | 'part'
+    unit?: string
+    category?: string
+}
+
+interface InvoiceCustomer {
+    name: string
+    phone?: string
+    address?: string
+}
+
+interface InvoiceVehicle {
+    vehicle_number: string
+    make: string
+    model: string
+}
+
+interface Invoice {
+    id: string
+    invoice_number: number
+    created_at: string
+    customer: InvoiceCustomer
+    vehicle: InvoiceVehicle
+    items: InvoiceItem[]
+    mileage: number
+    grand_total: number
+    discount_amount: number
+    mechanic_name?: string
+    notes?: string
+}
+
+// Register custom font - using cleaner path
+Font.register({
+    family: 'Revue Std Bold',
+    src: '/font/Revue Std Bold/Revue Std Bold.otf'
+});
+
+// Helper function to convert number to words (Indian format)
+function numberToWords(num: number): string {
+    const ones = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine'];
+    const tens = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
+    const teens = ['Ten', 'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen'];
+
+    if (num === 0) return '';
+
+    const convertLessThanThousand = (n: number): string => {
+        if (n === 0) return '';
+        if (n < 10) return ones[n];
+        if (n < 20) return teens[n - 10];
+        if (n < 100) return tens[Math.floor(n / 10)] + (n % 10 !== 0 ? ' ' + ones[n % 10] : '');
+        return ones[Math.floor(n / 100)] + ' Hundred' + (n % 100 !== 0 ? ' ' + convertLessThanThousand(n % 100) : '');
+    };
+
+    const crores = Math.floor(num / 10000000);
+    const lakhs = Math.floor((num % 10000000) / 100000);
+    const thousands = Math.floor((num % 100000) / 1000);
+    const remainder = num % 1000;
+
+    let result = '';
+    if (crores > 0) result += convertLessThanThousand(crores) + ' Crore ';
+    if (lakhs > 0) result += convertLessThanThousand(lakhs) + ' Lakh ';
+    if (thousands > 0) result += convertLessThanThousand(thousands) + ' Thousand ';
+    if (remainder > 0) result += convertLessThanThousand(remainder);
+
+    return result.trim();
+}
+
+// Convert amount to words with paise
+function numberToWordsWithPaise(amount: number): string {
+    const rupees = Math.floor(amount);
+    const paise = Math.round((amount - rupees) * 100);
+
+    let result = '';
+
+    if (rupees > 0) {
+        result = numberToWords(rupees) + ' Rupees';
+    } else {
+        result = 'Zero Rupees';
+    }
+
+    if (paise > 0) {
+        result += ' and ' + numberToWords(paise) + ' Paise';
+    }
+
+    return result + ' Only';
+}
 
 const styles = StyleSheet.create({
     page: {
@@ -11,7 +104,7 @@ const styles = StyleSheet.create({
     },
     container: {
         borderWidth: 1,
-        borderColor: '#14532d', // Dark green like the image
+        borderColor: '#14532d',
         height: '98%',
         flexDirection: 'column',
         display: 'flex',
@@ -21,7 +114,7 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         borderBottomWidth: 1,
         borderBottomColor: '#14532d',
-        height: 120, // Fixed height for header area
+        minHeight: 120,
     },
     headerLeft: {
         width: '55%',
@@ -39,6 +132,7 @@ const styles = StyleSheet.create({
     title: {
         fontSize: 22,
         fontWeight: 'bold',
+        fontFamily: 'Revue Std Bold',
         color: '#14532d',
         marginBottom: 4,
         textTransform: 'uppercase',
@@ -126,11 +220,20 @@ const styles = StyleSheet.create({
     // Table Rows
     tableRow: {
         flexDirection: 'row',
-        height: 20, // Fixed height per row or min-height
-        // items will occupy space
+        minHeight: 20, // Changed to minHeight
     },
-    cellText: { fontSize: 9, paddingTop: 4 },
-    cellTextRight: { fontSize: 9, paddingTop: 4, paddingRight: 4, textAlign: 'right' },
+    cellText: {
+        fontSize: 9,
+        paddingTop: 4,
+        lineHeight: 1.3, // Better text flow
+    },
+    cellTextRight: {
+        fontSize: 9,
+        paddingTop: 4,
+        paddingRight: 4,
+        textAlign: 'right',
+        lineHeight: 1.3,
+    },
 
     // Vertical Lines container for the empty space
     verticalLinesContainer: {
@@ -148,7 +251,7 @@ const styles = StyleSheet.create({
     footerSection: {
         borderTopWidth: 1,
         borderTopColor: '#14532d',
-        height: 100,
+        minHeight: 100, // Changed to minHeight
         flexDirection: 'column',
     },
     totalRow: {
@@ -208,154 +311,277 @@ const styles = StyleSheet.create({
         backgroundColor: '#f0f0f0',
         borderBottomWidth: 1,
         borderBottomColor: '#14532d'
-    }
+    },
+    // Continuation page styles
+    continuationHeader: {
+        flexDirection: 'row',
+        borderBottomWidth: 1,
+        borderBottomColor: '#14532d',
+        padding: 8,
+        backgroundColor: '#f0f0f0',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+    },
+    continuationText: {
+        fontSize: 10,
+        fontWeight: 'bold',
+        color: '#14532d',
+    },
+    pageNumber: {
+        fontSize: 9,
+        color: '#666',
+    },
+    continuationNotice: {
+        padding: 6,
+        backgroundColor: '#e6f4ea',
+        borderTopWidth: 1,
+        borderTopColor: '#14532d',
+    },
+    continuationNoticeText: {
+        fontSize: 9,
+        fontWeight: 'bold',
+        textAlign: 'center',
+        color: '#14532d',
+    },
 })
 
-export default function InvoicePDF({ invoice }: { invoice: any }) {
-    // Separate items by type or just list them
-    // If we want to emulate the picture, we might list them all.
-    // The picture shows Parts having 'Amount' and empty 'Labour'.
-    // We will follow that logic.
+export default function InvoicePDF({ invoice }: { invoice: Invoice }) {
+    // Validation guards
+    if (!invoice) {
+        return <Document><Page><Text>Invalid invoice data</Text></Page></Document>;
+    }
 
-    const items = invoice.items || []
-    const totalAmount = invoice.grand_total || 0
-    // Fill empty rows to make the grid look like the paper form
-    const minRows = 15
-    const emptyRows = Math.max(0, minRows - items.length)
+    if (!invoice.items || invoice.items.length === 0) {
+        return <Document><Page><Text>No items in invoice</Text></Page></Document>;
+    }
+
+    if (!invoice.customer || !invoice.vehicle) {
+        return <Document><Page><Text>Missing customer or vehicle data</Text></Page></Document>;
+    }
+
+    const items = invoice.items;
+
+    // Calculate totals from items for accuracy
+    const partsTotal = items
+        .filter(i => i.item_type === 'part')
+        .reduce((sum, i) => sum + Number(i.amount), 0);
+
+    const laborTotal = items
+        .filter(i => i.item_type === 'labor')
+        .reduce((sum, i) => sum + Number(i.amount), 0);
+
+    const subtotal = partsTotal + laborTotal;
+    const discount = invoice.discount_amount || 0;
+    const totalAmount = subtotal - discount;
+
+    // Validate against database value (log warning if mismatch)
+    if (Math.abs(totalAmount - invoice.grand_total) > 0.01) {
+        console.warn('Invoice total mismatch:', {
+            calculated: totalAmount,
+            stored: invoice.grand_total,
+            invoiceId: invoice.id
+        });
+    }
+
+    // Multi-page pagination logic
+    const itemsPerPage = 30; // Fill pages completely with items
+    const minRowsLastPage = 15; // Minimum rows on last page to make room for footer
+    const totalPages = Math.ceil(items.length / itemsPerPage);
+
+    // Split items into pages
+    const pages: InvoiceItem[][] = [];
+    for (let i = 0; i < totalPages; i++) {
+        const start = i * itemsPerPage;
+        const end = Math.min(start + itemsPerPage, items.length);
+        pages.push(items.slice(start, end));
+    }
 
     return (
         <Document>
-            <Page size="A4" style={styles.page}>
-                <View style={styles.container}>
-                    {/* Top Label */}
-                    <Text style={styles.topLabel}>LABOUR / CASH BILL</Text>
+            {pages.map((pageItems: InvoiceItem[], pageIndex) => {
+                const isFirstPage = pageIndex === 0;
+                const isLastPage = pageIndex === totalPages - 1;
+                const startItemIndex = pageIndex * itemsPerPage;
 
-                    {/* Header */}
-                    <View style={styles.headerContainer}>
-                        <View style={styles.headerLeft}>
-                            {/* Logo Placeholder - Text for now */}
-                            <Text style={styles.title}>VADIVELU CARS</Text>
-                            <Text style={styles.subtitle}>MULTI CAR SERVICE & EXPRESS CAR SERVICE</Text>
-                            <Text style={styles.address}>
-                                Near HP Petrol Bunk, Kondalampatty Bye-Pass Road,{'\n'}
-                                SALEM - 636 010.
+                // Only add empty rows on the last page
+                const emptyRows = isLastPage && pageItems.length < minRowsLastPage
+                    ? minRowsLastPage - pageItems.length
+                    : 0;
+
+                return (
+                    <Page key={pageIndex} size="A4" style={styles.page}>
+                        <View style={styles.container}>
+                            {/* Top Label */}
+                            <Text style={styles.topLabel}>
+                                LABOUR / CASH BILL {!isFirstPage && `(Page ${pageIndex + 1} of ${totalPages})`}
                             </Text>
-                            <Text style={styles.contact}>
-                                Cell : 89036 26677, 80125 26677
-                                Email : vadivelucars@gmail.com
-                            </Text>
-                        </View>
-                        <View style={styles.headerRight}>
-                            <View style={styles.customerRow}>
-                                <Text style={styles.customerLabel}>Customer Name :</Text>
-                                <Text style={styles.customerValue}>{invoice.customer?.name}</Text>
-                            </View>
-                            <View style={styles.customerRow}>
-                                <Text style={styles.customerLabel}>Vehicle No. :</Text>
-                                <Text style={styles.customerValue}>{invoice.vehicle?.vehicle_number}</Text>
-                            </View>
-                            <View style={styles.customerRow}>
-                                <Text style={styles.customerLabel}>Model :</Text>
-                                <Text style={styles.customerValue}>{invoice.vehicle?.make} {invoice.vehicle?.model}</Text>
-                            </View>
-                            <View style={styles.customerRow}>
-                                <Text style={styles.customerLabel}>Mileage (Km.) :</Text>
-                                <Text style={styles.customerValue}>{invoice.mileage}</Text>
-                            </View>
-                            <View style={{ flexDirection: 'row', marginTop: 4 }}>
-                                <View style={{ flexDirection: 'row', flex: 1 }}>
-                                    <Text style={styles.customerLabel}>Date :</Text>
-                                    <Text style={{ ...styles.customerValue, flex: 0, width: 60 }}>
-                                        {new Date(invoice.created_at).toLocaleDateString("en-GB")}
-                                    </Text>
-                                </View>
-                                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                                    <Text style={{ fontSize: 9, fontWeight: 'bold' }}>No. </Text>
-                                    <Text style={{ fontSize: 14, fontWeight: 'bold', color: '#14532d' }}>
-                                        {invoice.id.substring(0, 6).toUpperCase()}
-                                    </Text>
-                                </View>
-                            </View>
-                        </View>
-                    </View>
 
-                    {/* Table Header */}
-                    <View style={styles.tableHeader}>
-                        <View style={styles.colSl}><Text style={styles.headerText}>Sl. No.</Text></View>
-                        <View style={styles.colDesc}><Text style={styles.headerText}>PART DESCRIPTION</Text></View>
-                        <View style={styles.colQty}><Text style={styles.headerText}>QTY</Text></View>
-                        <View style={styles.colRate}><Text style={styles.headerText}>RATE{'\n'}(Rs.)</Text></View>
-                        <View style={styles.colAmount}><Text style={styles.headerText}>AMOUNT{'\n'}(Rs.)</Text></View>
-                        <View style={styles.colLabour}><Text style={styles.headerText}>LABOUR{'\n'}(Rs.)</Text></View>
-                    </View>
-
-                    {/* Table Items */}
-                    <View style={styles.contentContainer}>
-                        {items.map((item: any, index: number) => {
-                            const isLabor = item.item_type === 'labor';
-                            return (
-                                <View key={index} style={styles.tableRow}>
-                                    <View style={styles.colSl}><Text style={styles.cellText}>{index + 1}</Text></View>
-                                    <View style={styles.colDesc}><Text style={{ ...styles.cellText, textAlign: 'left', paddingLeft: 4 }}>{item.description}</Text></View>
-                                    <View style={styles.colQty}><Text style={styles.cellText}>{item.quantity}</Text></View>
-                                    <View style={styles.colRate}><Text style={styles.cellTextRight}>{Number(item.rate).toFixed(2)}</Text></View>
-                                    <View style={styles.colAmount}>
-                                        <Text style={styles.cellTextRight}>{!isLabor ? Number(item.amount).toFixed(2) : ''}</Text>
+                            {/* Header - Full on first page, simplified on continuation */}
+                            {isFirstPage ? (
+                                <View style={styles.headerContainer}>
+                                    <View style={styles.headerLeft}>
+                                        <Text style={styles.title}>VADIVELU CARS</Text>
+                                        <Text style={styles.subtitle}>MULTI CAR SERVICE & EXPRESS CAR SERVICE</Text>
+                                        <Text style={styles.address}>
+                                            Near HP Petrol Bunk, Kondalampatty Bye-Pass Road,{'\n'}
+                                            SALEM - 636 010.
+                                        </Text>
+                                        <Text style={styles.contact}>
+                                            Cell : 89036 26677, 80125 26677
+                                            Email : vadivelucars@gmail.com
+                                        </Text>
                                     </View>
-                                    <View style={styles.colLabour}>
-                                        <Text style={styles.cellTextRight}>{isLabor ? Number(item.amount).toFixed(2) : ''}</Text>
+                                    <View style={styles.headerRight}>
+                                        <View style={styles.customerRow}>
+                                            <Text style={styles.customerLabel}>Customer Name :</Text>
+                                            <Text style={styles.customerValue}>{invoice.customer?.name}</Text>
+                                        </View>
+                                        <View style={styles.customerRow}>
+                                            <Text style={styles.customerLabel}>Vehicle No. :</Text>
+                                            <Text style={styles.customerValue}>{invoice.vehicle?.vehicle_number}</Text>
+                                        </View>
+                                        <View style={styles.customerRow}>
+                                            <Text style={styles.customerLabel}>Model :</Text>
+                                            <Text style={styles.customerValue}>{invoice.vehicle?.make} {invoice.vehicle?.model}</Text>
+                                        </View>
+                                        <View style={styles.customerRow}>
+                                            <Text style={styles.customerLabel}>Mileage (Km.) :</Text>
+                                            <Text style={styles.customerValue}>{invoice.mileage}</Text>
+                                        </View>
+                                        <View style={{ flexDirection: 'row', marginTop: 4 }}>
+                                            <View style={{ flexDirection: 'row', flex: 1 }}>
+                                                <Text style={styles.customerLabel}>Date :</Text>
+                                                <Text style={{ ...styles.customerValue, flex: 0, width: 60 }}>
+                                                    {new Date(invoice.created_at).toLocaleDateString("en-GB")}
+                                                </Text>
+                                            </View>
+                                            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                                                <Text style={{ fontSize: 9, fontWeight: 'bold' }}>No. </Text>
+                                                <Text style={{ fontSize: 14, fontWeight: 'bold', color: '#14532d' }}>
+                                                    {invoice.invoice_number}
+                                                </Text>
+                                            </View>
+                                        </View>
                                     </View>
                                 </View>
-                            )
-                        })}
-                        {/* Empty Rows to fill space */}
-                        {Array.from({ length: emptyRows }).map((_, i) => (
-                            <View key={`empty-${i}`} style={styles.tableRow}>
-                                <View style={styles.colSl}><Text></Text></View>
-                                <View style={styles.colDesc}><Text></Text></View>
-                                <View style={styles.colQty}><Text></Text></View>
-                                <View style={styles.colRate}><Text></Text></View>
-                                <View style={styles.colAmount}><Text></Text></View>
-                                <View style={styles.colLabour}><Text></Text></View>
-                            </View>
-                        ))}
+                            ) : (
+                                <View style={styles.continuationHeader}>
+                                    <View>
+                                        <Text style={styles.continuationText}>
+                                            Invoice: {invoice.invoice_number} (Continued)
+                                        </Text>
+                                        <Text style={{ fontSize: 8, color: '#666' }}>
+                                            {invoice.customer?.name} • {invoice.vehicle?.vehicle_number}
+                                        </Text>
+                                    </View>
+                                    <Text style={styles.pageNumber}>Page {pageIndex + 1} of {totalPages}</Text>
+                                </View>
+                            )}
 
-                        {/* Only vertical lines rendered over the empty space? 
-                            Actually, rendering explicit empty rows with borders is easier to maintain the grid look.
-                        */}
-                    </View>
+                            {/* Table Header */}
+                            <View style={styles.tableHeader}>
+                                <View style={styles.colSl}><Text style={styles.headerText}>Sl. No.</Text></View>
+                                <View style={styles.colDesc}><Text style={styles.headerText}>PART DESCRIPTION</Text></View>
+                                <View style={styles.colQty}><Text style={styles.headerText}>QTY</Text></View>
+                                <View style={styles.colRate}><Text style={styles.headerText}>RATE{'\n'}(Rs.)</Text></View>
+                                <View style={styles.colAmount}><Text style={styles.headerText}>AMOUNT{'\n'}(Rs.)</Text></View>
+                                <View style={styles.colLabour}><Text style={styles.headerText}>LABOUR{'\n'}(Rs.)</Text></View>
+                            </View>
 
-                    {/* Total Section */}
-                    <View style={styles.footerSection}>
-                        <View style={styles.totalRow}>
-                            <View style={styles.totalLabelBox}>
-                                <Text style={{ fontWeight: 'bold' }}>TOTAL</Text>
-                            </View>
-                            <View style={styles.totalValueBox}>
-                                <Text style={{ fontWeight: 'bold' }}>{totalAmount.toFixed(2)}</Text>
-                            </View>
-                        </View>
-                        <View style={styles.totalRow}>
-                            <View style={styles.totalLabelBox}>
-                                <Text style={{ fontWeight: 'bold' }}>GRAND TOTAL</Text>
-                            </View>
-                            <View style={styles.totalValueBox}>
-                                <Text style={{ fontWeight: 'bold' }}>{totalAmount.toFixed(2)}</Text>
-                            </View>
-                        </View>
+                            {/* Table Items */}
+                            <View style={styles.contentContainer}>
+                                {pageItems.map((item, index) => {
+                                    const isLabor = item.item_type === 'labor';
+                                    const globalIndex = startItemIndex + index;
 
-                        <View style={styles.footerBottom}>
-                            <View style={styles.footerLeft}>
-                                <Text style={styles.noteText}>*Materials once sold cannot be Taken Back</Text>
+                                    return (
+                                        <View key={index} style={styles.tableRow}>
+                                            <View style={styles.colSl}><Text style={styles.cellText}>{globalIndex + 1}</Text></View>
+                                            <View style={styles.colDesc}><Text style={{ ...styles.cellText, textAlign: 'left', paddingLeft: 4 }}>{item.description}</Text></View>
+                                            <View style={styles.colQty}><Text style={styles.cellText}>{item.quantity}</Text></View>
+                                            <View style={styles.colRate}><Text style={styles.cellTextRight}>{Number(item.rate).toFixed(2)}</Text></View>
+                                            <View style={styles.colAmount}>
+                                                <Text style={styles.cellTextRight}>{!isLabor ? Number(item.amount).toFixed(2) : ''}</Text>
+                                            </View>
+                                            <View style={styles.colLabour}>
+                                                <Text style={styles.cellTextRight}>{isLabor ? Number(item.amount).toFixed(2) : ''}</Text>
+                                            </View>
+                                        </View>
+                                    )
+                                })}
+
+                                {/* Empty Rows - ONLY on last page */}
+                                {isLastPage && Array.from({ length: emptyRows }).map((_, i) => (
+                                    <View key={`empty-${i}`} style={styles.tableRow}>
+                                        <View style={styles.colSl}><Text></Text></View>
+                                        <View style={styles.colDesc}><Text></Text></View>
+                                        <View style={styles.colQty}><Text></Text></View>
+                                        <View style={styles.colRate}><Text></Text></View>
+                                        <View style={styles.colAmount}><Text></Text></View>
+                                        <View style={styles.colLabour}><Text></Text></View>
+                                    </View>
+                                ))}
+
+                                {/* Continuation notice - NOT on last page */}
+                                {!isLastPage && (
+                                    <View style={styles.continuationNotice}>
+                                        <Text style={styles.continuationNoticeText}>
+                                            ** Continued on next page **
+                                        </Text>
+                                    </View>
+                                )}
                             </View>
-                            <View style={styles.footerRight}>
-                                <Text style={styles.signatureLabel}>For VADIVELU CARS</Text>
-                                <Text style={styles.signatureLine}>Authorised Signature</Text>
-                            </View>
+
+                            {/* Total Section - ONLY on last page */}
+                            {isLastPage && (
+                                <View wrap={false} style={styles.footerSection}>
+                                    <View style={styles.totalRow}>
+                                        <View style={styles.totalLabelBox}>
+                                            <Text style={{ fontWeight: 'bold' }}>TOTAL</Text>
+                                        </View>
+                                        <View style={styles.totalValueBox}>
+                                            <Text style={{ fontWeight: 'bold' }}>{subtotal.toFixed(2)}</Text>
+                                        </View>
+                                    </View>
+                                    {discount > 0 && (
+                                        <View style={styles.totalRow}>
+                                            <View style={styles.totalLabelBox}>
+                                                <Text style={{ fontWeight: 'bold' }}>DISCOUNT</Text>
+                                            </View>
+                                            <View style={styles.totalValueBox}>
+                                                <Text style={{ fontWeight: 'bold' }}>- {discount.toFixed(2)}</Text>
+                                            </View>
+                                        </View>
+                                    )}
+                                    <View style={styles.totalRow}>
+                                        <View style={styles.totalLabelBox}>
+                                            <Text style={{ fontWeight: 'bold' }}>GRAND TOTAL</Text>
+                                        </View>
+                                        <View style={styles.totalValueBox}>
+                                            <Text style={{ fontWeight: 'bold' }}>{totalAmount.toFixed(2)}</Text>
+                                        </View>
+                                    </View>
+
+                                    <View style={styles.footerBottom}>
+                                        <View style={styles.footerLeft}>
+                                            <Text style={{ fontSize: 9, fontWeight: 'bold', marginBottom: 4 }}>
+                                                Rupees: {numberToWordsWithPaise(totalAmount)}
+                                            </Text>
+                                            <Text style={styles.noteText}>*Materials once sold cannot be Taken Back</Text>
+                                        </View>
+                                        <View style={styles.footerRight}>
+                                            <Text style={{ fontSize: 9, fontWeight: 'bold', marginTop: 10 }}>For VADIVELU CARS</Text>
+                                            <Text style={{ fontSize: 8, fontStyle: 'italic', marginTop: 20, textAlign: 'center', color: '#666' }}>
+                                                System Generated Invoice{'\n'}Signature not required
+                                            </Text>
+                                        </View>
+                                    </View>
+                                </View>
+                            )}
                         </View>
-                    </View>
-                </View>
-            </Page>
+                    </Page>
+                )
+            })}
         </Document>
     )
 }

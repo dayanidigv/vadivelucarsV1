@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "react-router-dom"
 import { useForm, useFieldArray } from "react-hook-form"
 import { Plus, Trash2, Search, Save, Printer } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { BackButton } from "@/components/ui/BackButton"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -26,10 +27,15 @@ import {
     DialogContent,
     DialogTrigger,
 } from "@/components/ui/dialog"
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { useSearchCustomers } from "@/hooks/useCustomers"
 import { useSearchParts } from "@/hooks/useParts"
 import { useCreateInvoice, useUpdateInvoice, useInvoice } from "@/hooks/useInvoices"
+import { useLastService } from "@/hooks/useLastService"
+import { useRecentlyUsedParts } from "../hooks/useRecentlyUsedParts"
 import { toast } from "sonner"
+import RecentlyUsedParts from "@/components/invoice/RecentlyUsedParts"
+
 
 type InvoiceFormValues = {
     customer_id: string
@@ -74,11 +80,33 @@ export default function CreateInvoice() {
             mileage: 0,
             payment_status: 'unpaid',
             payment_method: 'cash',
-            paid_amount: 0,
             discount_amount: 0,
-            items: [{ description: "", quantity: 1, rate: 0, amount: 0, item_type: 'part', unit: 'No', category: 'General' }]
+            paid_amount: 0,
+            notes: "",
+            items: []
         }
     })
+
+    // Enhanced hooks (after watch is available)
+    const { addRecentPart } = useRecentlyUsedParts()
+    useLastService(selectedCustomer?.id, watch('vehicle_id'))
+
+    // Handle recently used parts selection
+    const handleRecentPartSelect = (part: any) => {
+        append({
+            part_id: part.id,
+            description: part.name,
+            category: part.category,
+            item_type: 'part',
+            quantity: 1,
+            rate: part.price,
+            unit: 'No',
+            amount: part.price
+        })
+        addRecentPart(part)
+        toast.success(`Added ${part.name} to invoice`)
+    }
+
 
     // Load existing data if editing
     useEffect(() => {
@@ -184,7 +212,10 @@ export default function CreateInvoice() {
     return (
         <div className="space-y-6 max-w-10xl mx-auto pb-10 px-4">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                <h1 className="text-2xl sm:text-3xl font-bold">{isEditMode ? "Edit Invoice" : "New Invoice"}</h1>
+                <div className="flex items-center gap-4">
+                    <BackButton fallback="/invoices" />
+                    <h1 className="text-2xl sm:text-3xl font-bold">{isEditMode ? "Edit Invoice" : "New Invoice"}</h1>
+                </div>
                 <div className="flex gap-3 w-full sm:w-auto">
                     {isEditMode && (
                         <Button size="xl" variant="outline" onClick={() => window.open(`/invoices/${id}/print`, '_blank')} className="flex-1 sm:flex-none">
@@ -205,7 +236,7 @@ export default function CreateInvoice() {
                     </CardHeader>
                     <CardContent className="space-y-4">
                         <div className="space-y-2">
-                            <Label>Customer Search</Label>
+                            <Label>Customer Search *</Label>
                             <Dialog>
                                 <DialogTrigger asChild>
                                     <Button variant="outline" className="w-full justify-start text-left font-normal">
@@ -253,7 +284,7 @@ export default function CreateInvoice() {
                                 </div>
 
                                 <div className="space-y-2">
-                                    <Label>Vehicle</Label>
+                                    <Label>Vehicle *</Label>
                                     <Select onValueChange={(val) => setValue("vehicle_id", val)}>
                                         <SelectTrigger>
                                             <SelectValue placeholder="Select vehicle" />
@@ -288,12 +319,15 @@ export default function CreateInvoice() {
                         <CardTitle>Items & Services</CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-6">
+                        {/* Enhanced Features */}
+                        <RecentlyUsedParts onPartSelect={handleRecentPartSelect} />
+
                         <div className="space-y-4">
                             {fields.map((field, index) => (
                                 <div key={field.id} className="grid grid-cols-2 md:grid-cols-12 gap-2 items-end border-b pb-4">
                                     <div className="col-span-2 md:col-span-5">
-                                        <Label className="text-xs">Description</Label>
-                                        <Input {...register(`items.${index}.description`)} placeholder="Item name" />
+                                        <Label className="text-xs">Description *</Label>
+                                        <Input {...register(`items.${index}.description`, { required: "Description is required" })} placeholder="Item name" />
                                     </div>
                                     <div className="col-span-1 md:col-span-2">
                                         <Label className="text-xs">Type</Label>
@@ -311,12 +345,12 @@ export default function CreateInvoice() {
                                         </Select>
                                     </div>
                                     <div className="col-span-1 md:col-span-1">
-                                        <Label className="text-xs">Qty</Label>
-                                        <Input type="number" step="0.1" {...register(`items.${index}.quantity`)} className="h-9" />
+                                        <Label className="text-xs">Qty *</Label>
+                                        <Input type="number" step="0.1" {...register(`items.${index}.quantity`, { required: "Quantity is required", valueAsNumber: true })} className="h-9" />
                                     </div>
                                     <div className="col-span-1 md:col-span-2">
-                                        <Label className="text-xs">Rate</Label>
-                                        <Input type="number" {...register(`items.${index}.rate`)} className="h-9" />
+                                        <Label className="text-xs">Rate *</Label>
+                                        <Input type="number" {...register(`items.${index}.rate`, { required: "Rate is required", valueAsNumber: true })} className="h-9" />
                                     </div>
                                     <div className="col-span-1 md:col-span-1">
                                         <Label className="text-xs">Total</Label>

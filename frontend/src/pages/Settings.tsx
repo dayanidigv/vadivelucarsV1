@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
+import { BackButton } from "@/components/ui/BackButton"
 import { toast } from "sonner"
 
 export function Settings() {
@@ -14,9 +15,12 @@ export function Settings() {
 
     return (
         <div className="space-y-6 max-w-4xl mx-auto pb-10">
-            <div>
-                <h1 className="text-3xl font-bold tracking-tight">Settings</h1>
-                <p className="text-muted-foreground">Manage your workshop preferences and business details.</p>
+            <div className="flex items-center gap-4">
+                <BackButton fallback="/dashboard" />
+                <div>
+                    <h1 className="text-3xl font-bold tracking-tight">Settings</h1>
+                    <p className="text-muted-foreground">Manage your workshop preferences and business details.</p>
+                </div>
             </div>
             <Separator />
 
@@ -28,16 +32,16 @@ export function Settings() {
                 <CardContent className="space-y-4">
                     <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
-                            <Label>Shop Name</Label>
+                            <Label>Shop Name *</Label>
                             <Input defaultValue="Vadivelu Cars" />
                         </div>
                         <div className="space-y-2">
-                            <Label>Phone Number</Label>
+                            <Label>Phone Number *</Label>
                             <Input defaultValue="+91 8012526677" />
                         </div>
                     </div>
                     <div className="space-y-2">
-                        <Label>Address</Label>
+                        <Label>Address *</Label>
                         <Input defaultValue="Near HP Petrol Bunk, Opp. SM Nexa, Kondalampatti Bypass" />
                     </div>
                     <div className="grid grid-cols-2 gap-4">

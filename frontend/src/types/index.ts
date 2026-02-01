@@ -17,6 +17,7 @@ export interface Vehicle {
     model?: string
     year?: number
     current_mileage?: number
+    insurance_date?: string
     created_at: string
     updated_at: string
 }

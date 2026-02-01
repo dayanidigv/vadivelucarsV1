@@ -1,5 +1,6 @@
-import { motion } from 'framer-motion'
-import { Wrench, Zap, Droplet, Settings, PaintBucket, Hammer } from 'lucide-react'
+import { motion, useScroll, useTransform } from 'framer-motion'
+import { useRef } from 'react'
+import { Wrench, Zap, Droplet, Settings, PaintBucket, Hammer, ArrowRight } from 'lucide-react'
 
 interface Service {
     id: string
@@ -75,140 +76,332 @@ const services: Service[] = [
     }
 ]
 
-const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: {
-        opacity: 1,
-        transition: {
-            staggerChildren: 0.1
-        }
-    }
-}
+// Service Row Component with Parallax - Alternating Layout
+function ServiceRow({ service, index }: { service: Service; index: number }) {
+    const rowRef = useRef<HTMLDivElement>(null)
+    const { scrollYProgress } = useScroll({
+        target: rowRef,
+        offset: ["start end", "end start"]
+    })
 
-const cardVariants = {
-    hidden: { opacity: 0, y: 50 },
-    visible: {
-        opacity: 1,
-        y: 0,
-        transition: {
-            duration: 0.6,
-            ease: [0.22, 1, 0.36, 1]
-        }
-    }
-}
+    const isEven = index % 2 === 0
+    const imageX = useTransform(scrollYProgress, [0, 1], [isEven ? -100 : 100, isEven ? 50 : -50])
+    const contentX = useTransform(scrollYProgress, [0, 1], [isEven ? 100 : -100, isEven ? -50 : 50])
+    const opacity = useTransform(scrollYProgress, [0, 0.3, 0.7, 1], [0, 1, 1, 0])
 
-export function ServiceGrid() {
     return (
-        <section className="relative py-24 px-4 bg-slate-950 overflow-hidden">
-            {/* Background Pattern */}
-            <div
-                className="absolute inset-0 opacity-5"
-                style={{
-                    backgroundImage: 'url(/assets/images/optimized/bg-automotive-tech-pattern.webp)',
-                    backgroundSize: '512px',
-                    backgroundRepeat: 'repeat'
-                }}
-            />
+        <motion.div
+            ref={rowRef}
+            style={{ opacity }}
+            className="group relative mb-20 sm:mb-32 last:mb-0"
+        >
+            <div className={`flex flex-col ${isEven ? 'lg:flex-row' : 'lg:flex-row-reverse'} items-center gap-8 lg:gap-16`}>
 
-            <div className="relative max-w-7xl mx-auto">
-                {/* Section Header */}
+                {/* Image Section with 3D Parallax */}
                 <motion.div
-                    initial={{ opacity: 0, y: -20 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true }}
-                    transition={{ duration: 0.6 }}
-                    className="text-center mb-16"
+                    style={{ x: imageX }}
+                    className="w-full lg:w-1/2"
                 >
-                    <h2 className="text-5xl md:text-6xl font-black mb-4 bg-clip-text text-transparent bg-gradient-to-r from-blue-400 via-cyan-400 to-blue-500">
-                        Our Services
-                    </h2>
-                    <p className="text-xl text-slate-400">
-                        எங்கள் சேவைகள்
-                    </p>
-                </motion.div>
+                    <motion.div
+                        whileHover={{
+                            scale: 1.05,
+                            rotateY: isEven ? 5 : -5,
+                            rotateX: 3,
+                        }}
+                        transition={{
+                            type: "spring",
+                            stiffness: 200,
+                            damping: 15
+                        }}
+                        className="relative"
+                    >
+                        {/* Metallic Frame */}
+                        <div className="relative  overflow-hidden">
 
-                {/* Service Cards Grid */}
-                <motion.div
-                    variants={containerVariants}
-                    initial="hidden"
-                    whileInView="visible"
-                    viewport={{ once: true, margin: "-100px" }}
-                    className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8"
-                >
-                    {services.map((service) => (
-                        <motion.div
-                            key={service.id}
-                            variants={cardVariants}
-                            whileHover={{
-                                y: -10,
-                                scale: 1.02,
-                                transition: { duration: 0.3 }
-                            }}
-                            className="group relative"
-                        >
-                            {/* Glassmorphism Card */}
-                            <div className="relative h-full backdrop-blur-xl bg-white/5 border border-white/10 rounded-3xl p-8 overflow-hidden transition-all duration-300 hover:bg-white/10 hover:border-white/20 hover:shadow-[0_0_40px_rgba(59,130,246,0.3)]">
+                            {/* Inner glow on hover */}
+                            <div className="absolute inset-0 bg-gradient-to-br from-zinc-500/0 via-zinc-400/10 to-zinc-500/0 opacity-0 group-hover:opacity-100 transition-opacity duration-700 blur-xl" />
 
-                                {/* Gradient Glow on Hover */}
-                                <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 via-transparent to-cyan-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                            <div className="relative rounded-3xl overflow-hidden bg-gradient-to-br from-zinc-900 to-black p-12 sm:p-16">
+                                {/* Animated background */}
+                                <motion.div
+                                    className="absolute inset-0 opacity-30"
+                                    animate={{
+                                        backgroundPosition: ['0% 0%', '100% 100%'],
+                                    }}
+                                    transition={{
+                                        duration: 20,
+                                        repeat: Infinity,
+                                        repeatType: "reverse"
+                                    }}
+                                    style={{
+                                        backgroundImage: `radial-gradient(circle at 50% 50%, rgba(161,161,170,0.1) 0%, transparent 50%)`,
+                                        backgroundSize: '200% 200%'
+                                    }}
+                                />
 
-                                {/* Icon */}
-                                <div className="relative mb-6">
+                                {/* 3D Icon */}
+                                <motion.div
+                                    whileHover={{
+                                        scale: 1.1
+                                    }}
+                                    transition={{
+                                        duration: 0.8,
+                                        ease: "easeOut"
+                                    }}
+                                    className="relative"
+                                >
+                                    {/* Icon glow */}
+                                    <div className="absolute inset-0" />
+
                                     <picture>
                                         <source srcSet={service.icon} type="image/webp" />
                                         <img
                                             src={service.fallback}
                                             alt={service.title}
-                                            className="w-32 h-32 mx-auto object-contain transform group-hover:scale-110 group-hover:rotate-3 transition-transform duration-500"
+                                            className="relative w-full h-auto max-w-xs mx-auto object-contain drop-shadow-[0_0_40px_rgba(161,161,170,0.4)]"
                                         />
                                     </picture>
-                                </div>
-
-                                {/* Title */}
-                                <h3 className="text-2xl font-bold text-white mb-2 text-center group-hover:text-cyan-400 transition-colors duration-300">
-                                    {service.title}
-                                </h3>
-                                <p className="text-blue-300 text-center text-sm mb-4 font-medium">
-                                    {service.titleTamil}
-                                </p>
-
-                                {/* Description */}
-                                <p className="text-slate-300 text-center text-sm leading-relaxed mb-2">
-                                    {service.description}
-                                </p>
-                                <p className="text-slate-400 text-center text-xs leading-relaxed">
-                                    {service.descriptionTamil}
-                                </p>
-
-                                {/* Hover Icon */}
-                                <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                                    <service.IconComponent className="w-6 h-6 text-cyan-400" />
-                                </div>
-
-                                {/* Bottom Gradient Border */}
-                                <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-500 via-cyan-500 to-blue-500 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                                </motion.div>
                             </div>
+                        </div>
+
+                        {/* Floating icon indicator */}
+                        <motion.div
+                            className="absolute -top-6 -right-6 w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-600 to-blue-700 border-2 border-blue-500/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 shadow-lg shadow-blue-500/30"
+                            whileHover={{ scale: 1.1, rotate: 360 }}
+                            transition={{ duration: 0.5 }}
+                        >
+                            <service.IconComponent className="w-8 h-8 text-white" />
                         </motion.div>
-                    ))}
+                    </motion.div>
                 </motion.div>
 
-                {/* CTA */}
+                {/* Content Section with Parallax */}
                 <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true }}
-                    transition={{ duration: 0.6, delay: 0.6 }}
-                    className="text-center mt-16"
+                    style={{ x: contentX }}
+                    className="w-full lg:w-1/2 space-y-6"
                 >
-                    <motion.button
-                        whileHover={{ scale: 1.05 }}
-                        whileTap={{ scale: 0.95 }}
-                        className="px-8 py-4 bg-gradient-to-r from-blue-500 to-cyan-500 text-white font-bold text-lg rounded-full shadow-lg hover:shadow-[0_0_30px_rgba(59,130,246,0.5)] transition-shadow duration-300"
+                    {/* Number Badge */}
+                    <motion.div
+                        initial={{ opacity: 0, x: isEven ? -20 : 20 }}
+                        whileInView={{ opacity: 1, x: 0 }}
+                        viewport={{ once: true }}
+                        transition={{ duration: 0.6 }}
+                        className="inline-flex items-center gap-3"
                     >
-                        View All Services
-                    </motion.button>
+                        <div className="text-6xl sm:text-7xl font-black text-transparent bg-clip-text bg-gradient-to-br from-zinc-700 to-zinc-800">
+                            0{index + 1}
+                        </div>
+                        <div className="h-px flex-1 bg-gradient-to-r from-zinc-700 to-transparent max-w-[100px]" />
+                    </motion.div>
+
+                    {/* Title */}
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        whileInView={{ opacity: 1, y: 0 }}
+                        viewport={{ once: true }}
+                        transition={{ duration: 0.6, delay: 0.1 }}
+                    >
+                        <h3 className="text-3xl sm:text-4xl lg:text-5xl font-black text-white mb-3 leading-tight">
+                            {service.title}
+                        </h3>
+                        <p className="text-lg sm:text-xl text-zinc-400 font-medium">
+                            {service.titleTamil}
+                        </p>
+                    </motion.div>
+
+                    {/* Description */}
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        whileInView={{ opacity: 1, y: 0 }}
+                        viewport={{ once: true }}
+                        transition={{ duration: 0.6, delay: 0.2 }}
+                        className="space-y-3"
+                    >
+                        <p className="text-base sm:text-lg text-zinc-300 leading-relaxed">
+                            {service.description}
+                        </p>
+                        <p className="text-sm text-zinc-500 leading-relaxed">
+                            {service.descriptionTamil}
+                        </p>
+                    </motion.div>
+
+                    {/* Decorative line */}
+                    <motion.div
+                        initial={{ scaleX: 0 }}
+                        whileInView={{ scaleX: 1 }}
+                        viewport={{ once: true }}
+                        transition={{ duration: 0.8, delay: 0.3 }}
+                        className={`h-1 w-32 bg-gradient-to-r ${isEven ? 'from-zinc-600 to-transparent' : 'from-transparent to-zinc-600'}`}
+                    />
                 </motion.div>
             </div>
+
+            {/* Connecting Line Between Sections */}
+            {index < services.length - 1 && (
+                <motion.div
+                    initial={{ scaleY: 0 }}
+                    whileInView={{ scaleY: 1 }}
+                    viewport={{ once: true }}
+                    transition={{ duration: 1, delay: 0.5 }}
+                    className="absolute left-1/2 -bottom-16 w-px h-16 bg-gradient-to-b from-zinc-700 to-transparent transform -translate-x-1/2 hidden lg:block"
+                />
+            )}
+        </motion.div>
+    )
+}
+
+export function ServiceGrid() {
+    const sectionRef = useRef<HTMLDivElement>(null)
+    const { scrollYProgress } = useScroll({
+        target: sectionRef,
+        offset: ["start end", "end start"]
+    })
+
+    const backgroundY = useTransform(scrollYProgress, [0, 1], ['0%', '30%'])
+    const headerY = useTransform(scrollYProgress, [0, 1], [0, -50])
+    const headerOpacity = useTransform(scrollYProgress, [0, 0.3, 0.7, 1], [0, 1, 1, 0])
+
+    return (
+        <section
+            ref={sectionRef}
+            id="services"
+            className="relative py-24 sm:py-32 px-4 bg-gradient-to-b from-black via-zinc-950 to-black overflow-hidden"
+        >
+            {/* Animated Background Pattern with Parallax */}
+            <motion.div
+                style={{ y: backgroundY }}
+                className="absolute inset-0 opacity-[0.03]"
+            >
+                <div
+                    className="absolute inset-0"
+                    style={{
+                        backgroundImage: 'url(/assets/images/optimized/bg-automotive-tech-pattern.webp)',
+                        backgroundSize: '512px',
+                        backgroundRepeat: 'repeat'
+                    }}
+                />
+            </motion.div>
+
+            {/* Metallic Grid Overlay */}
+            <div className="absolute inset-0 opacity-[0.02]">
+                <div className="absolute inset-0" style={{
+                    backgroundImage: `linear-gradient(to right, rgba(161, 161, 170, 0.3) 1px, transparent 1px),
+                                     linear-gradient(to bottom, rgba(161, 161, 170, 0.3) 1px, transparent 1px)`,
+                    backgroundSize: '100px 100px'
+                }} />
+            </div>
+
+            {/* Radial Gradient Spotlight */}
+            <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_rgba(113,113,122,0.1)_0%,_transparent_50%)]" />
+            <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom,_rgba(82,82,91,0.1)_0%,_transparent_50%)]" />
+
+            {/* Floating Light Orbs */}
+            <motion.div
+                className="absolute top-1/4 left-1/4 w-96 h-96 bg-zinc-500/5 rounded-full blur-3xl"
+                animate={{
+                    scale: [1, 1.2, 1],
+                    x: [0, 50, 0],
+                    y: [0, -30, 0],
+                }}
+                transition={{
+                    duration: 20,
+                    repeat: Infinity,
+                    ease: "easeInOut"
+                }}
+            />
+            <motion.div
+                className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-neutral-600/5 rounded-full blur-3xl"
+                animate={{
+                    scale: [1.2, 1, 1.2],
+                    x: [0, -50, 0],
+                    y: [0, 30, 0],
+                }}
+                transition={{
+                    duration: 25,
+                    repeat: Infinity,
+                    ease: "easeInOut"
+                }}
+            />
+
+            <div className="relative max-w-7xl mx-auto">
+                {/* Section Header with Parallax */}
+                <motion.div
+                    style={{ y: headerY, opacity: headerOpacity }}
+                    className="text-center mb-16 sm:mb-20"
+                >
+                    <motion.div
+                        initial={{ opacity: 0, y: 30 }}
+                        whileInView={{ opacity: 1, y: 0 }}
+                        viewport={{ once: true }}
+                        transition={{ duration: 0.8 }}
+                    >
+                        <h2 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-black mb-4 bg-clip-text text-transparent bg-gradient-to-r from-zinc-200 via-zinc-50 to-zinc-300 drop-shadow-[0_0_30px_rgba(255,255,255,0.3)]">
+                            Our Services
+                        </h2>
+                        <p className="text-xl sm:text-2xl text-zinc-400 font-medium">
+                            எங்கள் சேவைகள்
+                        </p>
+
+                        {/* Decorative Line */}
+                        <motion.div
+                            className="mt-6 flex justify-center"
+                            initial={{ scaleX: 0 }}
+                            whileInView={{ scaleX: 1 }}
+                            viewport={{ once: true }}
+                            transition={{ duration: 0.8, delay: 0.3 }}
+                        >
+                            <div className="h-1 w-32 bg-gradient-to-r from-transparent via-zinc-600 to-transparent" />
+                        </motion.div>
+                    </motion.div>
+                </motion.div>
+
+                {/* Service Rows - Alternating Left/Right Layout */}
+                <div className="space-y-0">
+                    {services.map((service, index) => (
+                        <ServiceRow key={service.id} service={service} index={index} />
+                    ))}
+                </div>
+
+                {/* CTA Section */}
+                <motion.div
+                    initial={{ opacity: 0, y: 40 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ duration: 0.8, delay: 0.4 }}
+                    className="text-center mt-16 sm:mt-20"
+                >
+                    <motion.button
+                        whileHover={{
+                            scale: 1.05,
+                            boxShadow: "0 0 40px rgba(161,161,170,0.3)"
+                        }}
+                        whileTap={{ scale: 0.95 }}
+                        className="group relative px-8 sm:px-10 py-4 sm:py-5 bg-gradient-to-r from-zinc-800 via-zinc-700 to-zinc-800 text-white font-bold text-base sm:text-lg rounded-full border-2 border-zinc-600/50 hover:border-zinc-500/70 transition-all duration-300 overflow-hidden"
+                    >
+                        {/* Shine Effect */}
+                        <motion.div
+                            className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent"
+                            initial={{ x: '-100%' }}
+                            whileHover={{ x: '100%' }}
+                            transition={{ duration: 0.6 }}
+                        />
+
+                        <span className="relative flex items-center gap-3">
+                            View All Services
+                            <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform duration-300" />
+                        </span>
+                    </motion.button>
+
+                    {/* Subtitle */}
+                    <p className="mt-4 text-sm text-zinc-500">
+                        Explore our complete range of automotive solutions
+                    </p>
+                </motion.div>
+            </div>
+
+            {/* Bottom Gradient Fade */}
+            <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-black to-transparent pointer-events-none" />
         </section>
     )
 }

@@ -1,5 +1,4 @@
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8787'
+export const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8787'
 
 class ApiClient {
     private baseUrl: string
@@ -28,6 +27,68 @@ class ApiClient {
         }
 
         return response.json()
+    }
+
+    // Authentication
+    async login(username: string, password: string) {
+        return this.request<any>('/api/auth/login', {
+            method: 'POST',
+            body: JSON.stringify({ username, password }),
+        })
+    }
+
+    async logout(token: string) {
+        return this.request<any>('/api/auth/logout', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        })
+    }
+
+    async verifyToken(token: string) {
+        return this.request<any>('/api/auth/verify', {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        })
+    }
+
+    async changePassword(token: string, currentPassword: string, newPassword: string) {
+        return this.request<any>('/api/auth/change-password', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({ currentPassword, newPassword }),
+        })
+    }
+
+    // Customer Authentication
+    async customerLogin(phone: string) {
+        return this.request<any>('/api/customer-auth/login', {
+            method: 'POST',
+            body: JSON.stringify({ phone }),
+        })
+    }
+
+    async customerLogout(token: string) {
+        return this.request<any>('/api/customer-auth/logout', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        })
+    }
+
+    async verifyCustomerToken(token: string) {
+        return this.request<any>('/api/customer-auth/verify', {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        })
     }
 
     // Invoices
@@ -66,6 +127,10 @@ class ApiClient {
 
     async searchCustomers(query: string) {
         return this.request<any>(`/api/customers/search?q=${encodeURIComponent(query)}`)
+    }
+
+    async getCustomer(id: string) {
+        return this.request<any>(`/api/customers/${id}`)
     }
 
     async createCustomer(data: any) {
@@ -126,6 +191,10 @@ class ApiClient {
     // Dashboard
     async getDashboardStats() {
         return this.request<any>('/api/dashboard')
+    }
+
+    async getRevenueReports() {
+        return this.request<any>('/api/reports/revenue')
     }
 }
 

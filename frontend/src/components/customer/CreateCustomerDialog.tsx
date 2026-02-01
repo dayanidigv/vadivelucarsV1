@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from "react"
-import { useForm } from "react-hook-form"
+import { useForm, useFieldArray } from "react-hook-form"
 import { useCreateCustomer, useUpdateCustomer } from "@/hooks/useCustomers"
 import { Button } from "@/components/ui/button"
 import {
@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Plus, Loader2 } from "lucide-react"
+import { Plus, Loader2, Trash2 } from "lucide-react"
 import { toast } from "sonner"
 
 interface CreateCustomerDialogProps {
@@ -32,20 +32,26 @@ export function CreateCustomerDialog({ customerToEdit, trigger, open: controlled
     const isOpen = controlledOpen !== undefined ? controlledOpen : open
     const setIsOpen = setControlledOpen || setOpen
 
-    const { register, handleSubmit, reset, formState: { errors } } = useForm({
+    const { register, handleSubmit, reset, control, formState: { errors } } = useForm({
         defaultValues: {
             name: "",
             phone: "",
             email: "",
             address: "",
-            vehicle: {
+            vehicles: [{
                 vehicle_number: "",
                 make: "",
                 model: "",
                 year: "",
-                current_mileage: ""
-            }
+                current_mileage: "",
+                insurance_date: ""
+            }]
         }
+    })
+
+    const { fields, append, remove } = useFieldArray({
+        control,
+        name: "vehicles"
     })
 
     useEffect(() => {
@@ -55,15 +61,14 @@ export function CreateCustomerDialog({ customerToEdit, trigger, open: controlled
                 phone: customerToEdit.phone,
                 email: customerToEdit.email,
                 address: customerToEdit.address,
-                // If editing, we might not want to force vehicle edit here if it's separate, 
-                // but for now let's leave vehicle empty or handle complex logic later.
-                // The current backend create logic supports creating a vehicle WITH customer.
-                // Update logic usually updates customer details. Let's assume vehicle is separate or ignored for now in simple update.
+                vehicles: customerToEdit.vehicles && customerToEdit.vehicles.length > 0
+                    ? customerToEdit.vehicles
+                    : [{ vehicle_number: "", make: "", model: "", year: "", current_mileage: "", insurance_date: "" }]
             })
         } else {
             reset({
                 name: "", phone: "", email: "", address: "",
-                vehicle: { vehicle_number: "", make: "", model: "", year: "", current_mileage: "" }
+                vehicles: [{ vehicle_number: "", make: "", model: "", year: "", current_mileage: "", insurance_date: "" }]
             })
         }
     }, [customerToEdit, reset, isOpen])
@@ -106,19 +111,19 @@ export function CreateCustomerDialog({ customerToEdit, trigger, open: controlled
                     </Button>
                 )}
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[425px]">
+            <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto">
                 <DialogHeader>
                     <DialogTitle>{isEditMode ? "Edit Customer" : "Add New Customer"}</DialogTitle>
                 </DialogHeader>
                 <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
                     <div className="space-y-2">
-                        <Label htmlFor="name">Name</Label>
+                        <Label htmlFor="name">Name *</Label>
                         <Input id="name" {...register("name", { required: "Name is required" })} />
                         {errors.name && <span className="text-sm text-red-500">{errors.name.message as string}</span>}
                     </div>
 
                     <div className="space-y-2">
-                        <Label htmlFor="phone">Phone</Label>
+                        <Label htmlFor="phone">Phone *</Label>
                         <Input id="phone" {...register("phone", { required: "Phone is required" })} />
                         {errors.phone && <span className="text-sm text-red-500">{errors.phone.message as string}</span>}
                     </div>
@@ -133,21 +138,84 @@ export function CreateCustomerDialog({ customerToEdit, trigger, open: controlled
                         <Input id="address" {...register("address")} />
                     </div>
 
-                    {!isEditMode && (
-                        <div className="border-t pt-4 mt-4">
-                            <h4 className="font-medium mb-2">Vehicle Details (Optional)</h4>
-                            <div className="grid grid-cols-2 gap-2">
-                                <div className="space-y-2">
-                                    <Label>Vehicle Number</Label>
-                                    <Input {...register("vehicle.vehicle_number")} placeholder="KA-01-AB-1234" />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label>Model</Label>
-                                    <Input {...register("vehicle.model")} placeholder="Swift" />
-                                </div>
+                    <div className="border-t pt-4 mt-4">
+                            <div className="flex justify-between items-center mb-4">
+                                <h4 className="font-medium">Vehicle Details</h4>
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => append({
+                                        vehicle_number: "",
+                                        make: "",
+                                        model: "",
+                                        year: "",
+                                        current_mileage: "",
+                                        insurance_date: ""
+                                    })}
+                                >
+                                    <Plus className="h-4 w-4 mr-2" />
+                                    Add Vehicle
+                                </Button>
+                            </div>
+                            
+                            <div className="space-y-4">
+                                {fields.map((field, index) => (
+                                    <div key={field.id} className="border rounded-lg p-4 space-y-3">
+                                        <div className="flex justify-between items-center">
+                                            <h5 className="font-medium text-sm">Vehicle {index + 1}</h5>
+                                            {fields.length > 1 && (
+                                                <Button
+                                                    type="button"
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    onClick={() => remove(index)}
+                                                    className="text-red-500 hover:text-red-700"
+                                                >
+                                                    <Trash2 className="h-4 w-4" />
+                                                </Button>
+                                            )}
+                                        </div>
+                                        
+                                        <div className="grid grid-cols-2 gap-2">
+                                            <div className="space-y-2">
+                                                <Label>Vehicle Number *</Label>
+                                                <Input {...register(`vehicles.${index}.vehicle_number`, { required: "Vehicle number is required" })} placeholder="KA-01-AB-1234" />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label>Make</Label>
+                                                <Input {...register(`vehicles.${index}.make`)} placeholder="Maruti Suzuki" />
+                                            </div>
+                                        </div>
+                                        
+                                        <div className="grid grid-cols-2 gap-2">
+                                            <div className="space-y-2">
+                                                <Label>Model</Label>
+                                                <Input {...register(`vehicles.${index}.model`)} placeholder="Swift" />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label>Year</Label>
+                                                <Input {...register(`vehicles.${index}.year`)} placeholder="2022" />
+                                            </div>
+                                        </div>
+                                        
+                                        <div className="grid grid-cols-2 gap-2">
+                                            <div className="space-y-2">
+                                                <Label>Current Mileage</Label>
+                                                <Input {...register(`vehicles.${index}.current_mileage`)} placeholder="25000" />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label>Insurance Date</Label>
+                                                <Input 
+                                                    {...register(`vehicles.${index}.insurance_date`)} 
+                                                    type="date" 
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
                             </div>
                         </div>
-                    )}
 
                     <Button type="submit" className="w-full" disabled={isLoading}>
                         {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}

@@ -36,7 +36,7 @@ export function CreatePartDialog({ partToEdit, trigger }: CreatePartDialogProps)
     const { register, handleSubmit, reset, setValue, formState: { errors } } = useForm({
         defaultValues: {
             name: "",
-            category: "General",
+            category: "",
             unit: "No",
             default_rate: ""
         }
@@ -51,7 +51,7 @@ export function CreatePartDialog({ partToEdit, trigger }: CreatePartDialogProps)
                 default_rate: partToEdit.default_rate
             })
         } else {
-            reset({ name: "", category: "General", unit: "No", default_rate: "" })
+            reset({ name: "", category: "", unit: "No", default_rate: "" })
         }
     }, [partToEdit, reset, open])
 
@@ -104,25 +104,19 @@ export function CreatePartDialog({ partToEdit, trigger }: CreatePartDialogProps)
                 </DialogHeader>
                 <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
                     <div className="space-y-2">
-                        <Label htmlFor="name">Part Name</Label>
+                        <Label htmlFor="name">Part Name *</Label>
                         <Input id="name" {...register("name", { required: "Name is required" })} />
                         {errors.name && <span className="text-sm text-red-500">{errors.name.message as string}</span>}
                     </div>
 
                     <div className="space-y-2">
-                        <Label htmlFor="category">Category</Label>
-                        <Select onValueChange={(val) => setValue("category", val)} defaultValue="General">
-                            <SelectTrigger>
-                                <SelectValue placeholder="Select category" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="General">General</SelectItem>
-                                <SelectItem value="Engine">Engine</SelectItem>
-                                <SelectItem value="Body">Body</SelectItem>
-                                <SelectItem value="Electrical">Electrical</SelectItem>
-                                <SelectItem value="Consumables">Consumables</SelectItem>
-                            </SelectContent>
-                        </Select>
+                        <Label htmlFor="category">Category *</Label>
+                        <Input 
+                            id="category" 
+                            {...register("category", { required: "Category is required" })} 
+                            placeholder="Enter category (e.g., Engine, Body, Electrical)"
+                        />
+                        {errors.category && <span className="text-sm text-red-500">{errors.category.message as string}</span>}
                     </div>
 
                     <div className="space-y-2">
@@ -141,7 +135,7 @@ export function CreatePartDialog({ partToEdit, trigger }: CreatePartDialogProps)
                     </div>
 
                     <div className="space-y-2">
-                        <Label htmlFor="default_rate">Default Rate (₹)</Label>
+                        <Label htmlFor="default_rate">Default Rate (₹) *</Label>
                         <Input
                             id="default_rate"
                             type="number"

@@ -1,9 +1,9 @@
 import { useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
-import { Home, FileText, Users, Package, BarChart3, Menu, X, Car, Settings } from 'lucide-react'
+import { Home, FileText, Users, Package, BarChart3, Menu, X, Settings } from 'lucide-react'
 
 const navigation = [
-    { name: 'Dashboard', href: '/', icon: Home },
+    { name: 'Dashboard', href: '/dashboard', icon: Home },
     { name: 'Invoices', href: '/invoices', icon: FileText },
     { name: 'Customers', href: '/customers', icon: Users },
     { name: 'Parts', href: '/parts', icon: Package },
@@ -21,10 +21,12 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
             <header className="bg-white border-b border-gray-200 sticky top-0 z-10">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
                     <div className="flex justify-between items-center h-16">
-                        <div className="flex items-center">
-                            <Car className="h-8 w-8 text-primary" />
-                            <h1 className="ml-2 text-xl font-bold text-gray-900">
-                                Vadivelu Cars
+                        <div className="flex items-center justify-center">
+                            
+                            <h1 className="ml-2 text-xl font-bold text-gray-900" style={{
+                                fontFamily: "'Revue Std Bold', serif"
+                            }}>
+                             Vadivelu Cars
                             </h1>
                         </div>
 

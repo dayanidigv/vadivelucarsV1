@@ -25,6 +25,8 @@ export function useCreateInvoice() {
         mutationFn: (data: CreateInvoiceData) => api.createInvoice(data),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['invoices'] })
+            // Invalidate parts cache to refresh autosaved parts
+            queryClient.invalidateQueries({ queryKey: ['parts'] })
         },
     })
 }
@@ -36,6 +38,8 @@ export function useUpdateInvoice() {
         mutationFn: ({ id, data }: { id: string; data: any }) => api.updateInvoice(id, data),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['invoices'] })
+            // Invalidate parts cache to refresh autosaved parts
+            queryClient.invalidateQueries({ queryKey: ['parts'] })
         },
     })
 }
