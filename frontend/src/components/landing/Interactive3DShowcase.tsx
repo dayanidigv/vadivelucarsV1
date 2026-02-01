@@ -1,4 +1,4 @@
-import { useState, Suspense } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { Environment } from '@react-three/drei';
 import { motion } from 'framer-motion';
@@ -6,13 +6,67 @@ import { CarModel } from '@/components/3d/CarModel';
 import { CameraController } from '@/components/3d/CameraController';
 import { ServiceHotspots } from '@/components/3d/ServiceHotspots';
 import { ServiceInfoPanel } from '@/components/3d/ServiceInfoPanel';
+import { ModelDiagnostics } from '@/components/3d/ModelDiagnostics';
 import { SERVICE_CATEGORIES, DEFAULT_CAMERA } from '@/components/3d/types';
 import type { ServiceCategory } from '@/components/3d/types';
+
+// Device quality detection hook
+function useDeviceQuality() {
+    const [quality, setQuality] = useState<'high' | 'medium' | 'low'>('high');
+
+    useEffect(() => {
+        const isMobile = window.innerWidth < 768;
+        const isTablet = window.innerWidth < 1024 && window.innerWidth >= 768;
+        const isLowEnd = navigator.hardwareConcurrency ? navigator.hardwareConcurrency <= 4 : false;
+
+        if (isMobile && isLowEnd) {
+            setQuality('low');
+        } else if (isMobile || isTablet || isLowEnd) {
+            setQuality('medium');
+        } else {
+            setQuality('high');
+        }
+
+        console.log(`🎮 Device Quality: ${quality} (Mobile: ${isMobile}, Cores: ${navigator.hardwareConcurrency})`);
+    }, []);
+
+    return quality;
+}
 
 export function Interactive3DShowcase() {
     const [selectedService, setSelectedService] = useState<ServiceCategory | null>(null);
     const [hoveredZone, setHoveredZone] = useState<string | null>(null);
     const [isTransitioning, setIsTransitioning] = useState(false);
+    const [modelLoaded, setModelLoaded] = useState(false);
+    const [contextLost, setContextLost] = useState(false);
+
+    const quality = useDeviceQuality();
+
+    // Handle WebGL context loss/restore
+    useEffect(() => {
+        const canvas = document.querySelector('canvas');
+        if (!canvas) return;
+
+        const handleContextLost = (event: Event) => {
+            event.preventDefault();
+            console.warn('⚠️ WebGL context lost');
+            setContextLost(true);
+            setModelLoaded(false);
+        };
+
+        const handleContextRestored = () => {
+            console.log('✅ WebGL context restored');
+            setContextLost(false);
+        };
+
+        canvas.addEventListener('webglcontextlost', handleContextLost);
+        canvas.addEventListener('webglcontextrestored', handleContextRestored);
+
+        return () => {
+            canvas.removeEventListener('webglcontextlost', handleContextLost);
+            canvas.removeEventListener('webglcontextrestored', handleContextRestored);
+        };
+    }, []);
 
     const handleServiceSelect = (serviceId: string) => {
         const service = SERVICE_CATEGORIES.find(s => s.id === serviceId);
@@ -28,6 +82,13 @@ export function Interactive3DShowcase() {
     };
 
     const serviceZones = SERVICE_CATEGORIES.map(s => s.zone);
+
+    // Canvas performance settings based on device (reduced to prevent context loss)
+    const canvasSettings = {
+        low: { dpr: [1, 1], shadows: false, antialias: false },
+        medium: { dpr: [1, 1], shadows: false, antialias: true },
+        high: { dpr: [1, 1.5], shadows: true, antialias: true }
+    }[quality] as { dpr: [number, number], shadows: boolean, antialias: boolean };
 
     return (
         <section className="relative min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 py-20 overflow-hidden">
@@ -61,30 +122,76 @@ export function Interactive3DShowcase() {
                         viewport={{ once: true }}
                         transition={{ duration: 0.5 }}
                     >
+                        {/* Loading/Error Overlay */}
+                        {(!modelLoaded || contextLost) && (
+                            <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-slate-900/90 backdrop-blur-sm">
+                                {contextLost ? (
+                                    <>
+                                        <div className="text-6xl mb-4">⚠️</div>
+                                        <p className="text-yellow-400/90 font-semibold text-lg mb-2">WebGL Context Lost</p>
+                                        <p className="text-blue-300/60 text-sm mb-4 text-center max-w-md px-4">
+                                            Close some browser tabs and refresh the page
+                                        </p>
+                                        <button
+                                            onClick={() => window.location.reload()}
+                                            className="px-6 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg font-medium transition-colors"
+                                        >
+                                            Refresh Page
+                                        </button>
+                                    </>
+                                ) : (
+                                    <>
+                                        <div className="w-20 h-20 border-4 border-blue-500/30 border-t-blue-500 rounded-full animate-spin mb-4" />
+                                        <p className="text-blue-200/80 font-semibold text-lg mb-1">Loading 3D Model...</p>
+                                        <p className="text-blue-300/60 text-sm">This may take a moment</p>
+                                    </>
+                                )}
+                            </div>
+                        )}
+
                         <Suspense fallback={<CanvasLoader />}>
                             <Canvas
                                 camera={{ position: DEFAULT_CAMERA.position, fov: DEFAULT_CAMERA.fov || 55 }}
-                                shadows
+                                shadows={canvasSettings.shadows}
+                                dpr={canvasSettings.dpr}
+                                gl={{
+                                    antialias: canvasSettings.antialias,
+                                    alpha: true,
+                                    powerPreference: quality === 'low' ? 'low-power' : 'high-performance'
+                                }}
+                                onCreated={({ gl }) => {
+                                    gl.setClearColor('#0f172a', 0);
+                                    // Model loaded callback
+                                    setTimeout(() => setModelLoaded(true), 1000);
+                                }}
                             >
-                                {/* Lighting */}
-                                <ambientLight intensity={0.6} />
+                                {/* Enhanced Lighting Setup */}
+                                <ambientLight intensity={0.8} />
+                                <hemisphereLight args={['#ffffff', '#444444', 0.6]} />
                                 <directionalLight
                                     position={[10, 10, 5]}
-                                    intensity={1.2}
-                                    castShadow
-                                    shadow-mapSize-width={2048}
-                                    shadow-mapSize-height={2048}
+                                    intensity={1.5}
+                                    castShadow={canvasSettings.shadows}
+                                    shadow-mapSize-width={quality === 'high' ? 2048 : 1024}
+                                    shadow-mapSize-height={quality === 'high' ? 2048 : 1024}
+                                />
+                                <directionalLight
+                                    position={[-10, 5, -5]}
+                                    intensity={0.8}
                                 />
                                 <spotLight
-                                    position={[0, 5, 0]}
-                                    angle={0.3}
+                                    position={[0, 10, 0]}
+                                    angle={0.5}
                                     penumbra={1}
-                                    intensity={0.5}
-                                    castShadow
+                                    intensity={1}
+                                    castShadow={canvasSettings.shadows}
                                 />
 
                                 {/* Environment (for reflections) */}
                                 <Environment preset="night" />
+
+                                {/* Model Diagnostics - logs detailed model info to console */}
+                                <ModelDiagnostics modelPath="/models/car-model.glb" />
 
                                 {/* Car Model */}
                                 <CarModel modelPath="/models/car-model.glb" />
@@ -98,10 +205,12 @@ export function Interactive3DShowcase() {
                                 />
 
                                 {/* Shadow Plane */}
-                                <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 0]} receiveShadow>
-                                    <planeGeometry args={[20, 20]} />
-                                    <shadowMaterial opacity={0.3} />
-                                </mesh>
+                                {canvasSettings.shadows && (
+                                    <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 0]} receiveShadow>
+                                        <planeGeometry args={[20, 20]} />
+                                        <shadowMaterial opacity={0.3} />
+                                    </mesh>
+                                )}
 
                                 {/* Camera Controller */}
                                 <CameraController
@@ -111,6 +220,23 @@ export function Interactive3DShowcase() {
                                 />
                             </Canvas>
                         </Suspense>
+
+                        {/* User Guidance Tooltip */}
+                        {modelLoaded && !selectedService && (
+                            <motion.div
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: 1 }}
+                                className="absolute bottom-4 left-4 z-40 pointer-events-none"
+                            >
+                                <div className="bg-slate-900/95 backdrop-blur-sm px-4 py-2 rounded-lg border border-blue-500/30 shadow-xl">
+                                    <p className="text-white text-sm flex items-center gap-2">
+                                        <span className="text-blue-400">💡</span>
+                                        <span>Click and drag to rotate • Scroll to zoom</span>
+                                    </p>
+                                </div>
+                            </motion.div>
+                        )}
 
                         {/* Reset Button */}
                         {selectedService && (

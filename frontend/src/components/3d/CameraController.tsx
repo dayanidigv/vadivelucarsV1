@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useRef, useEffect } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
 import * as THREE from 'three';
@@ -19,17 +19,19 @@ export function CameraController({
     const controlsRef = useRef<any>(null);
     const isTransitioning = useRef(false);
     const transitionProgress = useRef(0);
+    const hasCompletedTransition = useRef(false);
 
     const startPosition = useRef(new THREE.Vector3());
     const startTarget = useRef(new THREE.Vector3());
     const endPosition = useRef(new THREE.Vector3());
     const endTarget = useRef(new THREE.Vector3());
 
-    useFrame((_state, delta) => {
-        if (targetPreset && !isTransitioning.current) {
-            // Start transition
+    // Reset transition when target changes
+    useEffect(() => {
+        if (targetPreset) {
             isTransitioning.current = true;
             transitionProgress.current = 0;
+            hasCompletedTransition.current = false;
 
             startPosition.current.copy(camera.position);
             if (controlsRef.current) {
@@ -44,39 +46,54 @@ export function CameraController({
                 (camera as THREE.PerspectiveCamera).updateProjectionMatrix();
             }
         }
+    }, [targetPreset, camera]);
 
-        if (isTransitioning.current) {
-            transitionProgress.current += delta * 0.8; // Transition speed
+    useFrame((_state, delta) => {
+        // Early exit if not transitioning
+        if (!isTransitioning.current) return;
 
-            if (transitionProgress.current >= 1) {
-                transitionProgress.current = 1;
-                isTransitioning.current = false;
-                if (onTransitionComplete) {
-                    onTransitionComplete();
-                }
+        transitionProgress.current += delta * 0.8; // Transition speed
+
+        if (transitionProgress.current >= 1) {
+            transitionProgress.current = 1;
+            isTransitioning.current = false;
+
+            // Ensure exact final position
+            camera.position.copy(endPosition.current);
+            if (controlsRef.current) {
+                controlsRef.current.target.copy(endTarget.current);
+                controlsRef.current.update();
             }
 
-            // Smooth easing function (easeInOutCubic)
-            const t = transitionProgress.current;
-            const eased = t < 0.5
-                ? 4 * t * t * t
-                : 1 - Math.pow(-2 * t + 2, 3) / 2;
+            // Call completion callback only once
+            if (!hasCompletedTransition.current && onTransitionComplete) {
+                hasCompletedTransition.current = true;
+                onTransitionComplete();
+            }
+            return;
+        }
 
-            // Interpolate camera position
-            camera.position.lerpVectors(
-                startPosition.current,
-                endPosition.current,
+        // Smooth easing function (easeInOutCubic)
+        const t = transitionProgress.current;
+        const eased = t < 0.5
+            ? 4 * t * t * t
+            : 1 - Math.pow(-2 * t + 2, 3) / 2;
+
+        // Interpolate camera position
+        camera.position.lerpVectors(
+            startPosition.current,
+            endPosition.current,
+            eased
+        );
+
+        // Interpolate camera target
+        if (controlsRef.current) {
+            controlsRef.current.target.lerpVectors(
+                startTarget.current,
+                endTarget.current,
                 eased
             );
-
-            // Interpolate camera target
-            if (controlsRef.current) {
-                controlsRef.current.target.lerpVectors(
-                    startTarget.current,
-                    endTarget.current,
-                    eased
-                );
-            }
+            controlsRef.current.update();
         }
     });
 
@@ -90,6 +107,8 @@ export function CameraController({
             maxDistance={10}
             maxPolarAngle={Math.PI / 2}
             minPolarAngle={Math.PI / 6}
+            enableDamping={true}
+            dampingFactor={0.05}
         />
     );
 }

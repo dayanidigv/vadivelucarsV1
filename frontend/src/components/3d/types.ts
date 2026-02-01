@@ -36,7 +36,7 @@ export const SERVICE_CATEGORIES: ServiceCategory[] = [
         priceRange: '₹500 - ₹3,000',
         zone: {
             id: 'tires',
-            position: [1.2, 0.3, 0],
+            position: [14.4, 3.6, 0],
             label: 'Tires & Wheels',
             icon: '🛞',
             camera: {
@@ -56,7 +56,7 @@ export const SERVICE_CATEGORIES: ServiceCategory[] = [
         priceRange: '₹2,500 - ₹8,000',
         zone: {
             id: 'engine',
-            position: [0, 0.8, 1.5],
+            position: [0, 9.6, 18],
             label: 'Engine Bay',
             icon: '🔧',
             camera: {
@@ -76,7 +76,7 @@ export const SERVICE_CATEGORIES: ServiceCategory[] = [
         priceRange: '₹1,500 - ₹4,500',
         zone: {
             id: 'ac',
-            position: [0, 1.0, 0.5],
+            position: [0, 12, 6],
             label: 'AC System',
             icon: '❄️',
             camera: {
@@ -96,7 +96,7 @@ export const SERVICE_CATEGORIES: ServiceCategory[] = [
         priceRange: '₹3,000 - ₹15,000',
         zone: {
             id: 'body',
-            position: [0, 1.2, 0],
+            position: [0, 14.4, 0],
             label: 'Body & Paint',
             icon: '🎨',
             camera: {
@@ -116,7 +116,7 @@ export const SERVICE_CATEGORIES: ServiceCategory[] = [
         priceRange: '₹800 - ₹2,500',
         zone: {
             id: 'oil',
-            position: [0, 0.2, 0.5],
+            position: [0, 2.4, 6],
             label: 'Oil Change',
             icon: '🛢️',
             camera: {
@@ -136,7 +136,7 @@ export const SERVICE_CATEGORIES: ServiceCategory[] = [
         priceRange: '₹3,500 - ₹12,000',
         zone: {
             id: 'transmission',
-            position: [0.8, 0.4, -0.5],
+            position: [9.6, 4.8, -6],
             label: 'Transmission',
             icon: '⚙️',
             camera: {
@@ -156,7 +156,7 @@ export const SERVICE_CATEGORIES: ServiceCategory[] = [
         priceRange: '₹500 - ₹8,000',
         zone: {
             id: 'battery',
-            position: [-0.6, 0.9, 1.3],
+            position: [-7.2, 10.8, 15.6],
             label: 'Battery',
             icon: '🔋',
             camera: {
@@ -176,7 +176,7 @@ export const SERVICE_CATEGORIES: ServiceCategory[] = [
         priceRange: '₹2,000 - ₹5,000',
         zone: {
             id: 'general',
-            position: [0, 0.7, 0],
+            position: [0, 8.4, 0],
             label: 'General Service',
             icon: '🚗',
             camera: {
@@ -190,7 +190,7 @@ export const SERVICE_CATEGORIES: ServiceCategory[] = [
 ];
 
 export const DEFAULT_CAMERA: CameraPreset = {
-    position: [5, 2, 5],
+    position: [10, 5, 10],
     target: [0, 0.5, 0],
     fov: 55
 };
