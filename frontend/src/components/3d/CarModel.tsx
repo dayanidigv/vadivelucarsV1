@@ -15,24 +15,64 @@ export function CarModel({ modelPath }: CarModelProps) {
 
         const clonedScene = loadedScene.clone();
 
-        // Calculate bounding box to understand model size
+        // =====================================
+        // STEP 1: CALCULATE PRECISE BOUNDING BOX
+        // =====================================
         const box = new THREE.Box3().setFromObject(clonedScene);
-        const size = box.getSize(new THREE.Vector3());
-        const center = box.getCenter(new THREE.Vector3());
+        const size = new THREE.Vector3();
+        const center = new THREE.Vector3();
 
-        console.log('📏 Model Dimensions:', {
-            width: size.x.toFixed(2),
-            height: size.y.toFixed(2),
-            depth: size.z.toFixed(2),
-            center: `(${center.x.toFixed(2)}, ${center.y.toFixed(2)}, ${center.z.toFixed(2)})`
-        });
+        box.getSize(size);
+        box.getCenter(center);
 
-        // Center the model
-        clonedScene.position.x -= center.x;
-        clonedScene.position.y -= center.y;
-        clonedScene.position.z -= center.z;
+        console.log('🔧 RAW Model Analysis:');
+        console.log('  Size:', size);
+        console.log('  Center:', center);
+        console.log('  Min:', box.min);
+        console.log('  Max:', box.max);
 
-        // Fix materials and enable shadows
+        // =====================================
+        // STEP 2: CALCULATE OPTIMAL SCALE
+        // =====================================
+        // Target: Car should be 4 units long (typical car length in 3D space)
+        const TARGET_LENGTH = 4.0; // Standard 3D scene units
+        const currentLongestAxis = Math.max(size.x, size.y, size.z);
+        const optimalScale = TARGET_LENGTH / currentLongestAxis;
+
+        console.log(`📏 Scale Calculation:`);
+        console.log(`  Current longest axis: ${currentLongestAxis.toFixed(4)}`);
+        console.log(`  Target length: ${TARGET_LENGTH}`);
+        console.log(`  Optimal scale: ${optimalScale.toFixed(4)}`);
+
+        // =====================================
+        // STEP 3: CENTER THE MODEL AT ORIGIN
+        // =====================================
+        // Move model so its geometric center is at (0, 0, 0)
+        clonedScene.position.set(-center.x, -center.y, -center.z);
+
+        // Apply optimal scale
+        clonedScene.scale.setScalar(optimalScale);
+
+        // =====================================
+        // STEP 4: POSITION CAR ON GROUND PLANE
+        // =====================================
+        // After centering, move car up so its bottom sits at y=0
+        const scaledBox = new THREE.Box3().setFromObject(clonedScene);
+        const scaledSize = new THREE.Vector3();
+        scaledBox.getSize(scaledSize);
+
+        // Lift car by half its height so bottom touches ground (y=0)
+        const groundOffset = scaledSize.y / 2;
+        clonedScene.position.y += groundOffset;
+
+        console.log(`🎯 Final Positioning:`);
+        console.log(`  Ground offset: ${groundOffset.toFixed(4)}`);
+        console.log(`  Final position:`, clonedScene.position);
+        console.log(`  Final scale:`, clonedScene.scale);
+
+        // =====================================
+        // STEP 5: FIX MATERIALS & SHADOWS
+        // =====================================
         let meshCount = 0;
         clonedScene.traverse((child) => {
             if (child instanceof THREE.Mesh) {
@@ -42,18 +82,30 @@ export function CarModel({ modelPath }: CarModelProps) {
                 child.castShadow = true;
                 child.receiveShadow = true;
 
-                console.log(`🎨 Mesh #${meshCount}:`, child.name || 'unnamed', 'Material type:', child.material?.type);
-
-                // Fix material issues
+                // Fix materials
                 if (child.material) {
-                    if (Array.isArray(child.material)) {
-                        child.material.forEach((mat) => fixMaterial(mat, child.name));
-                    } else {
-                        fixMaterial(child.material, child.name);
-                    }
+                    const materials = Array.isArray(child.material)
+                        ? child.material
+                        : [child.material];
+
+                    materials.forEach((mat) => {
+                        if (mat instanceof THREE.MeshStandardMaterial) {
+                            // Ensure visibility
+                            mat.side = THREE.DoubleSide;
+                            mat.transparent = false;
+                            mat.opacity = 1;
+
+                            // Optimize for car paint look
+                            mat.metalness = Math.min(mat.metalness || 0.4, 0.6);
+                            mat.roughness = Math.max(mat.roughness || 0.3, 0.2);
+
+                            // Ensure proper lighting response
+                            mat.needsUpdate = true;
+                        }
+                    });
                 }
 
-                // Ensure geometry has proper normals
+                // Compute proper normals
                 if (child.geometry) {
                     child.geometry.computeVertexNormals();
                 }
@@ -65,6 +117,7 @@ export function CarModel({ modelPath }: CarModelProps) {
         // Add to scene
         group.current.add(clonedScene);
 
+        // Cleanup
         return () => {
             if (group.current) {
                 group.current.remove(clonedScene);
@@ -72,59 +125,124 @@ export function CarModel({ modelPath }: CarModelProps) {
         };
     }, [loadedScene]);
 
-    // Helper function to fix material properties
-    const fixMaterial = (material: THREE.Material, meshName: string) => {
-        if (material instanceof THREE.MeshStandardMaterial ||
-            material instanceof THREE.MeshPhysicalMaterial) {
-
-            // Ensure materials are visible
-            material.side = THREE.DoubleSide; // Render both sides
-            material.transparent = false;
-            material.opacity = 1;
-
-            // Improve visibility
-            material.metalness = Math.min(material.metalness || 0.3, 0.5);
-            material.roughness = Math.max(material.roughness || 0.5, 0.4);
-
-            // Ensure proper lighting response
-            material.needsUpdate = true;
-
-            console.log(`  ✓ Material fixed for "${meshName}":`, {
-                type: material.type,
-                metalness: material.metalness.toFixed(2),
-                roughness: material.roughness.toFixed(2),
-                color: material.color?.getHexString()
-            });
-        }
-    };
-
-    // Fallback if model fails to load
+    // =====================================
+    // FALLBACK: SIMPLE GEOMETRIC CAR
+    // =====================================
     if (!loadedScene) {
-        console.warn('Using fallback geometry');
-        return (
-            <group ref={group} position={[0, 0, 0]}>
-                {/* Simple fallback car */}
-                <mesh position={[0, 0.5, 0]} castShadow receiveShadow>
-                    <boxGeometry args={[2, 1, 4]} />
-                    <meshStandardMaterial
-                        color="#3b82f6"
-                        metalness={0.6}
-                        roughness={0.4}
-                        emissive="#1e40af"
-                        emissiveIntensity={0.2}
-                    />
-                </mesh>
-            </group>
-        );
+        console.warn('⚠️ Using fallback geometry');
+        return <SimpleCarFallback />;
     }
 
+    // =====================================
+    // RENDER: Wrapper group at origin
+    // =====================================
     return (
         <group
             ref={group}
-            scale={[18, 18, 18]}
-            position={[0, -0.5, 0]}
+            position={[0, 0, 0]}
             rotation={[0, 0, 0]}
+        // NO SCALE HERE - scale is applied to cloned scene inside
         />
+    );
+}
+
+// =====================================
+// IMPROVED FALLBACK CAR
+// =====================================
+function SimpleCarFallback() {
+    return (
+        <group position={[0, 0.75, 0]}>
+            {/* Car Body - Main */}
+            <mesh position={[0, 0, 0]} castShadow receiveShadow>
+                <boxGeometry args={[4, 1.2, 2]} />
+                <meshStandardMaterial
+                    color="#2563eb"
+                    metalness={0.7}
+                    roughness={0.2}
+                />
+            </mesh>
+
+            {/* Car Cabin - Top */}
+            <mesh position={[-0.3, 0.8, 0]} castShadow receiveShadow>
+                <boxGeometry args={[2, 0.9, 1.8]} />
+                <meshStandardMaterial
+                    color="#1e40af"
+                    metalness={0.7}
+                    roughness={0.2}
+                />
+            </mesh>
+
+            {/* Wheels - 4 corners */}
+            {[
+                [-1.3, -0.5, 1.1],  // Front Left
+                [1.3, -0.5, 1.1],   // Front Right
+                [-1.3, -0.5, -1.1], // Rear Left
+                [1.3, -0.5, -1.1],  // Rear Right
+            ].map((pos, idx) => (
+                <group key={idx} position={pos as [number, number, number]}>
+                    {/* Tire */}
+                    <mesh rotation={[0, 0, Math.PI / 2]} castShadow>
+                        <cylinderGeometry args={[0.4, 0.4, 0.25, 32]} />
+                        <meshStandardMaterial
+                            color="#1a1a1a"
+                            metalness={0.1}
+                            roughness={0.9}
+                        />
+                    </mesh>
+                    {/* Rim */}
+                    <mesh rotation={[0, 0, Math.PI / 2]}>
+                        <cylinderGeometry args={[0.25, 0.25, 0.27, 16]} />
+                        <meshStandardMaterial
+                            color="#888888"
+                            metalness={0.9}
+                            roughness={0.1}
+                        />
+                    </mesh>
+                </group>
+            ))}
+
+            {/* Windshield */}
+            <mesh position={[0.5, 0.8, 0]} castShadow>
+                <boxGeometry args={[1.5, 0.7, 1.75]} />
+                <meshStandardMaterial
+                    color="#87ceeb"
+                    transparent
+                    opacity={0.3}
+                    metalness={0.9}
+                    roughness={0.05}
+                />
+            </mesh>
+
+            {/* Headlights */}
+            {[
+                [2, 0.1, 0.8],
+                [2, 0.1, -0.8],
+            ].map((pos, idx) => (
+                <mesh key={`light-${idx}`} position={pos as [number, number, number]}>
+                    <sphereGeometry args={[0.15, 16, 16]} />
+                    <meshStandardMaterial
+                        color="#ffffff"
+                        emissive="#ffff88"
+                        emissiveIntensity={3}
+                    />
+                </mesh>
+            ))}
+
+            {/* Tail Lights */}
+            {[
+                [-2, 0.1, 0.8],
+                [-2, 0.1, -0.8],
+            ].map((pos, idx) => (
+                <mesh key={`tail-${idx}`} position={pos as [number, number, number]}>
+                    <sphereGeometry args={[0.12, 16, 16]} />
+                    <meshStandardMaterial
+                        color="#ff0000"
+                        emissive="#ff0000"
+                        emissiveIntensity={2}
+                    />
+                </mesh>
+            ))}
+        </group>
     );
 }
 

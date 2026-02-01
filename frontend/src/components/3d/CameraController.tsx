@@ -52,7 +52,7 @@ export function CameraController({
         // Early exit if not transitioning
         if (!isTransitioning.current) return;
 
-        transitionProgress.current += delta * 0.8; // Transition speed
+        transitionProgress.current += delta * 1.2; // Smooth transition speed (faster = higher multiplier)
 
         if (transitionProgress.current >= 1) {
             transitionProgress.current = 1;
@@ -73,11 +73,9 @@ export function CameraController({
             return;
         }
 
-        // Smooth easing function (easeInOutCubic)
+        // Advanced easing: easeOutCubic (smooth deceleration)
         const t = transitionProgress.current;
-        const eased = t < 0.5
-            ? 4 * t * t * t
-            : 1 - Math.pow(-2 * t + 2, 3) / 2;
+        const eased = 1 - Math.pow(1 - t, 3);
 
         // Interpolate camera position
         camera.position.lerpVectors(
@@ -103,12 +101,15 @@ export function CameraController({
             enabled={enableManualControl}
             enablePan={false}
             enableZoom={true}
-            minDistance={3}
-            maxDistance={10}
-            maxPolarAngle={Math.PI / 2}
-            minPolarAngle={Math.PI / 6}
+            minDistance={4}
+            maxDistance={15}
+            maxPolarAngle={Math.PI / 2.2}  // Don't go below ground
+            minPolarAngle={Math.PI / 12}   // Don't go too high
             enableDamping={true}
-            dampingFactor={0.05}
+            dampingFactor={0.08}
+            rotateSpeed={0.5}
+            zoomSpeed={0.8}
+            target={[0, 0.75, 0]}  // Always orbit around car center
         />
     );
 }

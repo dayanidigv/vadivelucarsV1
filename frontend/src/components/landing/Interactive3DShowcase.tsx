@@ -151,44 +151,79 @@ export function Interactive3DShowcase() {
 
                         <Suspense fallback={<CanvasLoader />}>
                             <Canvas
-                                camera={{ position: DEFAULT_CAMERA.position, fov: DEFAULT_CAMERA.fov || 55 }}
+                                camera={{
+                                    position: DEFAULT_CAMERA.position,
+                                    fov: DEFAULT_CAMERA.fov || 50,
+                                    near: 0.1,
+                                    far: 1000
+                                }}
                                 shadows={canvasSettings.shadows}
                                 dpr={canvasSettings.dpr}
                                 gl={{
                                     antialias: canvasSettings.antialias,
                                     alpha: true,
-                                    powerPreference: quality === 'low' ? 'low-power' : 'high-performance'
+                                    powerPreference: quality === 'low' ? 'low-power' : 'high-performance',
+                                    preserveDrawingBuffer: true
                                 }}
-                                onCreated={({ gl }) => {
+                                onCreated={({ gl, camera }) => {
                                     gl.setClearColor('#0f172a', 0);
-                                    // Model loaded callback
+                                    camera.lookAt(0, 0.75, 0);
                                     setTimeout(() => setModelLoaded(true), 1000);
                                 }}
                             >
-                                {/* Enhanced Lighting Setup */}
-                                <ambientLight intensity={0.8} />
-                                <hemisphereLight args={['#ffffff', '#444444', 0.6]} />
+                                {/* ========================================= */}
+                                {/* IMPROVED LIGHTING SETUP */}
+                                {/* ========================================= */}
+
+                                {/* Key Light - Main illumination from front-right */}
                                 <directionalLight
-                                    position={[10, 10, 5]}
-                                    intensity={1.5}
+                                    position={[5, 8, 5]}
+                                    intensity={2.5}
                                     castShadow={canvasSettings.shadows}
-                                    shadow-mapSize-width={quality === 'high' ? 2048 : 1024}
-                                    shadow-mapSize-height={quality === 'high' ? 2048 : 1024}
+                                    shadow-mapSize-width={2048}
+                                    shadow-mapSize-height={2048}
+                                    shadow-camera-left={-10}
+                                    shadow-camera-right={10}
+                                    shadow-camera-top={10}
+                                    shadow-camera-bottom={-10}
+                                    shadow-camera-near={0.1}
+                                    shadow-camera-far={50}
+                                    shadow-bias={-0.0001}
                                 />
+
+                                {/* Fill Light - Soften shadows from left */}
                                 <directionalLight
-                                    position={[-10, 5, -5]}
-                                    intensity={0.8}
+                                    position={[-5, 5, 3]}
+                                    intensity={1.2}
+                                    color="#b0d4ff"
                                 />
+
+                                {/* Back Light - Rim lighting effect */}
+                                <directionalLight
+                                    position={[0, 3, -5]}
+                                    intensity={0.8}
+                                    color="#ffd4a3"
+                                />
+
+                                {/* Ambient - Base illumination */}
+                                <ambientLight intensity={0.4} color="#ffffff" />
+
+                                {/* Hemisphere - Sky/ground ambient */}
+                                <hemisphereLight args={['#87ceeb', '#444444', 0.5]} />
+
+                                {/* Spot - Dramatic accent from above */}
                                 <spotLight
                                     position={[0, 10, 0]}
-                                    angle={0.5}
+                                    angle={0.4}
                                     penumbra={1}
-                                    intensity={1}
+                                    intensity={1.5}
                                     castShadow={canvasSettings.shadows}
+                                    shadow-mapSize-width={1024}
+                                    shadow-mapSize-height={1024}
                                 />
 
                                 {/* Environment (for reflections) */}
-                                <Environment preset="night" />
+                                <Environment preset="city" environmentIntensity={0.6} />
 
                                 {/* Model Diagnostics - logs detailed model info to console */}
                                 <ModelDiagnostics modelPath="/models/car-model.glb" />
@@ -204,12 +239,29 @@ export function Interactive3DShowcase() {
                                     onZoneHover={setHoveredZone}
                                 />
 
-                                {/* Shadow Plane */}
+                                {/* ========================================= */}
+                                {/* GROUND PLANE WITH BETTER SHADOW */}
+                                {/* ========================================= */}
                                 {canvasSettings.shadows && (
-                                    <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 0]} receiveShadow>
-                                        <planeGeometry args={[20, 20]} />
-                                        <shadowMaterial opacity={0.3} />
-                                    </mesh>
+                                    <>
+                                        {/* Invisible shadow receiver */}
+                                        <mesh
+                                            rotation={[-Math.PI / 2, 0, 0]}
+                                            position={[0, 0, 0]}
+                                            receiveShadow
+                                        >
+                                            <planeGeometry args={[50, 50]} />
+                                            <shadowMaterial opacity={0.4} />
+                                        </mesh>
+
+                                        {/* Subtle grid for reference */}
+                                        <gridHelper
+                                            args={[20, 20, '#ffffff', '#ffffff']}
+                                            position={[0, 0.01, 0]}
+                                            material-opacity={0.05}
+                                            material-transparent={true}
+                                        />
+                                    </>
                                 )}
 
                                 {/* Camera Controller */}
