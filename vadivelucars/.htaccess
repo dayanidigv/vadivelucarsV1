@@ -1,0 +1,11 @@
+# Ensure that mod_rewrite is enabled
+RewriteEngine On
+
+# Redirect non-www to www (Optional)
+RewriteCond %{HTTP_HOST} ^vadivelucars\.innak\.in [NC]
+RewriteRule ^(.*)$ https://www.vadivelucars.innak.in/$1 [L,R=301]
+
+# Custom 404 Error Page
+ErrorDocument 404 /404.html
+
+# If the page is not found, redirect to 404.html

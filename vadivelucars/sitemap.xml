@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+    <url>
+        <loc>https://vadivelucars.innak.in/</loc>
+        <lastmod>2025-01-01</lastmod>
+        <priority>1.00</priority>
+    </url>
+    <url>
+        <loc>https://vadivelucars.innak.in/services.html</loc>
+        <lastmod>2025-01-01</lastmod>
+        <priority>0.80</priority>
+    </url>
+    <url>
+        <loc>https://vadivelucars.innak.in/contact-us.html</loc>
+        <lastmod>2025-01-01</lastmod>
+        <priority>0.80</priority>
+    </url>
+    <url>
+        <loc>https://vadivelucars.innak.in/#about-us</loc>
+        <lastmod>2025-01-01</lastmod>
+        <priority>0.60</priority>
+    </url>
+</sitemapindex>
