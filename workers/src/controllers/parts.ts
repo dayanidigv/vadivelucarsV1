@@ -72,3 +72,56 @@ export async function create(c: Context) {
 
     return c.json({ success: true, data })
 }
+
+export async function update(c: Context) {
+    const id = c.req.param('id')
+    const body = await c.req.json()
+    const supabase = getSupabaseClient(c.env)
+
+    const { data, error } = await supabase
+        .from('parts_catalog')
+        .update(body)
+        .eq('id', id)
+        .select()
+        .single()
+
+    if (error) {
+        return c.json({ error: error.message }, 400)
+    }
+
+    return c.json({ success: true, data })
+}
+
+export async function remove(c: Context) {
+    const id = c.req.param('id')
+    const supabase = getSupabaseClient(c.env)
+
+    const { error } = await supabase
+        .from('parts_catalog')
+        .update({ is_active: false })
+        .eq('id', id)
+
+    if (error) {
+        return c.json({ error: error.message }, 400)
+    }
+
+    return c.json({ success: true, message: 'Part deleted successfully' })
+}
+
+export async function recent(c: Context) {
+    const supabase = getSupabaseClient(c.env)
+    const limit = Number(c.req.query('limit')) || 10
+
+    const { data, error } = await supabase
+        .from('parts_catalog')
+        .select('*')
+        .eq('is_active', true)
+        .order('updated_at', { ascending: false })
+        .limit(limit)
+
+    if (error) {
+        return c.json({ error: error.message }, 400)
+    }
+
+    return c.json({ success: true, data })
+}

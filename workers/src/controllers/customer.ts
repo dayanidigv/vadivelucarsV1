@@ -106,18 +106,23 @@ export async function create(c: Context) {
         return c.json({ error: customerError.message }, 400)
     }
 
-    // Create vehicle if provided
-    if (body.vehicle) {
+    // Create vehicles if provided (handle both single vehicle and multiple vehicles)
+    const vehicles = body.vehicles || (body.vehicle ? [body.vehicle] : [])
+    
+    if (vehicles.length > 0) {
+        const vehiclesToInsert = vehicles.map((vehicle: any) => ({
+            customer_id: customer.id,
+            vehicle_number: vehicle.vehicle_number,
+            make: vehicle.make || null,
+            model: vehicle.model || null,
+            year: vehicle.year ? parseInt(vehicle.year) : null,
+            current_mileage: vehicle.current_mileage ? parseInt(vehicle.current_mileage) : null,
+            insurance_date: vehicle.insurance_date || null
+        }))
+
         const { error: vehicleError } = await supabase
             .from('vehicles')
-            .insert({
-                customer_id: customer.id,
-                vehicle_number: body.vehicle.vehicle_number,
-                make: body.vehicle.make,
-                model: body.vehicle.model,
-                year: body.vehicle.year,
-                current_mileage: body.vehicle.current_mileage
-            })
+            .insert(vehiclesToInsert)
 
         if (vehicleError) {
             // Rollback customer
@@ -138,16 +143,56 @@ export async function update(c: Context) {
     const body = await c.req.json()
     const supabase = getSupabaseClient(c.env)
 
-    const { data, error } = await supabase
+    // Update customer basic info
+    const { data: customer, error: customerError } = await supabase
         .from('customers')
-        .update(body)
+        .update({
+            name: body.name,
+            phone: body.phone,
+            email: body.email,
+            address: body.address
+        })
         .eq('id', id)
         .select()
         .single()
 
-    if (error) {
-        return c.json({ error: error.message }, 400)
+    if (customerError) {
+        return c.json({ error: customerError.message }, 400)
     }
 
-    return c.json({ success: true, data })
+    // Handle vehicles update if provided
+    if (body.vehicles && Array.isArray(body.vehicles)) {
+        // Delete existing vehicles for this customer
+        await supabase
+            .from('vehicles')
+            .delete()
+            .eq('customer_id', id)
+
+        // Insert new vehicles
+        if (body.vehicles.length > 0) {
+            const vehiclesToInsert = body.vehicles.map((vehicle: any) => ({
+                customer_id: id,
+                vehicle_number: vehicle.vehicle_number,
+                make: vehicle.make || null,
+                model: vehicle.model || null,
+                year: vehicle.year ? parseInt(vehicle.year) : null,
+                current_mileage: vehicle.current_mileage ? parseInt(vehicle.current_mileage) : null,
+                insurance_date: vehicle.insurance_date || null
+            }))
+
+            const { error: vehicleError } = await supabase
+                .from('vehicles')
+                .insert(vehiclesToInsert)
+
+            if (vehicleError) {
+                return c.json({ error: vehicleError.message }, 400)
+            }
+        }
+    }
+
+    return c.json({ 
+        success: true, 
+        data: customer,
+        message: 'Customer updated successfully'
+    })
 }

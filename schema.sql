@@ -2,20 +2,64 @@
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- =====================================================
--- USERS TABLE
+-- USERS TABLE (Enhanced for Authentication & Role Management)
 -- =====================================================
 CREATE TABLE users (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  phone VARCHAR(15) UNIQUE NOT NULL,
+  username VARCHAR(50) UNIQUE NOT NULL,
+  email VARCHAR(100) UNIQUE NOT NULL,
+  password_hash VARCHAR(255) NOT NULL,
+  phone VARCHAR(15),
   name VARCHAR(100) NOT NULL,
-  email VARCHAR(100),
-  role VARCHAR(20) DEFAULT 'staff',
+  role VARCHAR(20) DEFAULT 'staff' CHECK (role IN ('admin', 'manager', 'staff', 'technician')),
+  permissions JSONB DEFAULT '{}',
   is_active BOOLEAN DEFAULT true,
+  last_login TIMESTAMPTZ,
+  login_attempts INTEGER DEFAULT 0,
+  locked_until TIMESTAMPTZ,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+CREATE INDEX idx_users_username ON users(username);
+CREATE INDEX idx_users_email ON users(email);
 CREATE INDEX idx_users_phone ON users(phone);
+CREATE INDEX idx_users_role ON users(role);
+CREATE INDEX idx_users_active ON users(is_active);
+
+-- =====================================================
+-- USER SESSIONS TABLE
+-- =====================================================
+CREATE TABLE user_sessions (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+  session_token VARCHAR(255) UNIQUE NOT NULL,
+  expires_at TIMESTAMPTZ NOT NULL,
+  ip_address INET,
+  user_agent TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX idx_sessions_token ON user_sessions(session_token);
+CREATE INDEX idx_sessions_user ON user_sessions(user_id);
+CREATE INDEX idx_sessions_expires ON user_sessions(expires_at);
+
+-- =====================================================
+-- CUSTOMER SESSIONS TABLE
+-- =====================================================
+CREATE TABLE customer_sessions (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  customer_id UUID REFERENCES customers(id) ON DELETE CASCADE,
+  session_token VARCHAR(255) UNIQUE NOT NULL,
+  expires_at TIMESTAMPTZ NOT NULL,
+  ip_address INET,
+  user_agent TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX idx_customer_sessions_token ON customer_sessions(session_token);
+CREATE INDEX idx_customer_sessions_customer ON customer_sessions(customer_id);
+CREATE INDEX idx_customer_sessions_expires ON customer_sessions(expires_at);
 
 -- =====================================================
 -- CUSTOMERS TABLE
@@ -44,12 +88,17 @@ CREATE TABLE vehicles (
   model VARCHAR(50),
   year INTEGER,
   current_mileage INTEGER,
+  insurance_date DATE,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 CREATE INDEX idx_vehicles_number ON vehicles(vehicle_number);
 CREATE INDEX idx_vehicles_customer ON vehicles(customer_id);
+CREATE INDEX idx_vehicles_insurance_date ON vehicles(insurance_date);
+
+-- Comment explaining the new column
+COMMENT ON COLUMN vehicles.insurance_date IS 'Insurance renewal date for reminder system';
 
 -- =====================================================
 -- PARTS CATALOG
@@ -127,7 +176,7 @@ CREATE INDEX idx_invoice_items_invoice ON invoice_items(invoice_id);
 -- =====================================================
 -- AUTO-INCREMENT INVOICE NUMBER
 -- =====================================================
-CREATE SEQUENCE invoice_number_seq START WITH 2098;
+CREATE SEQUENCE IF NOT EXISTS invoice_number_seq START WITH 2098;
 
 CREATE OR REPLACE FUNCTION generate_invoice_number()
 RETURNS TRIGGER AS $$
@@ -153,6 +202,10 @@ BEGIN
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
+
+CREATE TRIGGER update_users_timestamp
+  BEFORE UPDATE ON users
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 
 CREATE TRIGGER update_customers_timestamp
   BEFORE UPDATE ON customers
@@ -199,3 +252,18 @@ INSERT INTO customers (name, phone) VALUES
 INSERT INTO vehicles (customer_id, vehicle_number, model, current_mileage)
 SELECT id, 'KA 55 M 3966', 'Scorpio', 45000
 FROM customers WHERE phone = '9876543210';
+
+-- =====================================================
+-- INSERT SAMPLE USERS (Password: admin123, manager123, staff123)
+-- =====================================================
+-- Note: These are example passwords - in production, use secure passwords
+INSERT INTO users (username, email, password_hash, phone, name, role, permissions) VALUES
+(
+  'dayanidi',
+  'dayanidigv954@gmail.com',
+  '$2b$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy',
+  '8012526677',
+  'Dayanidi GV',
+  'admin',
+  '{"all": true, "users": ["create", "read", "update", "delete"], "settings": ["read", "update"]}'
+)

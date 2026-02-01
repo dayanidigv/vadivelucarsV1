@@ -57,9 +57,64 @@ export async function get(c: Context) {
     return c.json({ success: true, data })
 }
 
+export async function getLastByVehicle(c: Context) {
+    const vehicleId = c.req.query('vehicle_id')
+    if (!vehicleId) {
+        return c.json({ error: 'vehicle_id is required' }, 400)
+    }
+
+    const supabase = getSupabaseClient(c.env)
+
+    const { data, error } = await supabase
+        .from('invoices')
+        .select(`
+      id,
+      items:invoice_items(*)
+    `)
+        .eq('vehicle_id', vehicleId)
+        .order('created_at', { ascending: false })
+        .limit(1)
+
+    if (error) {
+        return c.json({ error: error.message }, 400)
+    }
+
+    const invoice = data && data[0]
+
+    if (!invoice) {
+        return c.json({ success: true, data: null })
+    }
+
+    return c.json({ success: true, data: invoice })
+}
+
 export async function create(c: Context) {
     const body = await c.req.json()
     const supabase = getSupabaseClient(c.env)
+
+    // Autosave non-part items as parts (both parts and labor items)
+    for (const item of body.items) {
+        if (!item.part_id) {
+            // Check if part already exists
+            const { data: existingPart } = await supabase
+                .from('parts_catalog')
+                .select('id')
+                .ilike('name', item.description)
+                .single()
+
+            if (!existingPart) {
+                // Create new part (for both part and labor items)
+                await supabase
+                    .from('parts_catalog')
+                    .insert({
+                        name: item.description,
+                        category: item.category || 'General',
+                        default_rate: item.rate,
+                        unit: item.unit || 'No'
+                    })
+            }
+        }
+    }
 
     // Create invoice
     const { data: invoice, error: invoiceError } = await supabase
@@ -149,6 +204,32 @@ export async function update(c: Context) {
     const id = c.req.param('id')
     const body = await c.req.json()
     const supabase = getSupabaseClient(c.env)
+
+    // Autosave non-part items as parts (both parts and labor items)
+    if (body.items && Array.isArray(body.items)) {
+        for (const item of body.items) {
+            if (!item.part_id) {
+                // Check if part already exists
+                const { data: existingPart } = await supabase
+                    .from('parts_catalog')
+                    .select('id')
+                    .ilike('name', item.description)
+                    .single()
+
+                if (!existingPart) {
+                    // Create new part (for both part and labor items)
+                    await supabase
+                        .from('parts_catalog')
+                        .insert({
+                            name: item.description,
+                            category: item.category || 'General',
+                            default_rate: item.rate,
+                            unit: item.unit || 'No'
+                        })
+                }
+            }
+        }
+    }
 
     // Separate items from invoice data
     const { items, ...invoiceData } = body
