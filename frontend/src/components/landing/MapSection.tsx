@@ -29,7 +29,7 @@ export function MapSection() {
                         </h2>
                     </div>
                     <p className="text-zinc-500 text-sm">
-                        Near HP Petrol Bunk, Kondalampatti Bypass, Salem
+                        Near HP Petrol Bunk, Opp. SM Nexa, Kondalampatti Bypass, Salem, TN 636010
                     </p>
                 </motion.div>
 

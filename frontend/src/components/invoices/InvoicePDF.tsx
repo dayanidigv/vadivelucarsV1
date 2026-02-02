@@ -423,7 +423,7 @@ export default function InvoicePDF({ invoice }: { invoice: Invoice }) {
                                         <Text style={styles.title}>VADIVELU CARS</Text>
                                         <Text style={styles.subtitle}>MULTI CAR SERVICE & EXPRESS CAR SERVICE</Text>
                                         <Text style={styles.address}>
-                                            Near HP Petrol Bunk, Kondalampatty Bye-Pass Road,{'\n'}
+                                            Near HP Petrol Bunk, Opp. SM Nexa, Kondalampatti Bypass,{'\n'}
                                             SALEM - 636 010.
                                         </Text>
                                         <Text style={styles.contact}>

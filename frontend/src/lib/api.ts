@@ -1,6 +1,6 @@
 export const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8787'
 
-class ApiClient {
+export class ApiClient {
     private baseUrl: string
 
     constructor(baseUrl: string) {
@@ -13,22 +13,47 @@ class ApiClient {
     ): Promise<T> {
         const url = `${this.baseUrl}${endpoint}`
 
-        // Get token from localStorage for authenticated endpoints
-        const token = localStorage.getItem('token')
+        // Get tokens from localStorage for different user types
+        const adminToken = localStorage.getItem('token')
+        const customerToken = localStorage.getItem('customerToken')
+        
         const headers: HeadersInit = {
             'Content-Type': 'application/json',
             ...options?.headers,
         }
 
-        // Add Authorization header for protected endpoints (except auth endpoints)
-        if (token && !endpoint.startsWith('/api/auth') && !endpoint.startsWith('/api/customer-auth')) {
-            (headers as Record<string, string>)['Authorization'] = `Bearer ${token}`
-            console.log('🔐 Adding auth header for:', endpoint, 'Token length:', token.length)
+        // Determine which token to use based on endpoint
+        let token: string | null = null
+        let tokenType: string = 'none'
+
+        if (endpoint.startsWith('/api/customer-auth')) {
+            // Customer auth endpoints - no token needed
+            tokenType = 'none'
+        } else if (endpoint.startsWith('/api/customer/')) {
+            // Customer-specific routes - use customer token
+            token = customerToken
+            tokenType = 'customer'
+        } else if (endpoint.startsWith('/api/auth')) {
+            // Admin auth endpoints - no token needed
+            tokenType = 'none'
         } else {
-            console.log('🔓 No auth header for:', endpoint, { 
-                hasToken: !!token, 
+            // Admin protected routes - use admin token
+            token = adminToken
+            tokenType = 'admin'
+        }
+
+        // Add Authorization header if token is available
+        if (token) {
+            (headers as Record<string, string>)['Authorization'] = `Bearer ${token}`
+            console.log(`🔐 Adding ${tokenType} auth header for:`, endpoint, 'Token length:', token.length)
+        } else {
+            console.log(`🔓 No auth header for:`, endpoint, { 
+                tokenType,
+                hasAdminToken: !!adminToken,
+                hasCustomerToken: !!customerToken,
                 isAuthEndpoint: endpoint.startsWith('/api/auth'),
-                isCustomerAuthEndpoint: endpoint.startsWith('/api/customer-auth')
+                isCustomerAuthEndpoint: endpoint.startsWith('/api/customer-auth'),
+                isCustomerRoute: endpoint.startsWith('/api/customer/')
             })
         }
 
@@ -39,7 +64,7 @@ class ApiClient {
 
         if (!response.ok) {
             const error = await response.json().catch(() => ({}))
-            console.error('❌ API Error:', { endpoint, status: response.status, error })
+            console.error('❌ API Error:', { endpoint, status: response.status, error, tokenType })
             throw new Error(error.error || 'Request failed')
         }
 
@@ -97,20 +122,28 @@ class ApiClient {
         })
     }
 
-    async customerLogout(token: string) {
+    async customerLogout() {
+        const customerToken = localStorage.getItem('customerToken')
+        if (!customerToken) {
+            throw new Error('No customer token found')
+        }
         return this.request<any>('/api/customer-auth/logout', {
             method: 'POST',
             headers: {
-                'Authorization': `Bearer ${token}`
+                'Authorization': `Bearer ${customerToken}`
             }
         })
     }
 
-    async verifyCustomerToken(token: string) {
+    async verifyCustomerToken() {
+        const customerToken = localStorage.getItem('customerToken')
+        if (!customerToken) {
+            throw new Error('No customer token found')
+        }
         return this.request<any>('/api/customer-auth/verify', {
             method: 'GET',
             headers: {
-                'Authorization': `Bearer ${token}`
+                'Authorization': `Bearer ${customerToken}`
             }
         })
     }
