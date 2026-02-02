@@ -1,0 +1,10 @@
+# Cloudflare Pages configuration
+name = "vadivelu-cars-admin"
+compatibility_date = "2024-01-15"
+pages_build_output_dir = "dist"
+
+[env.production]
+name = "vadivelu-cars-admin"
+
+[env.preview]
+name = "vadivelu-cars-admin-preview"
