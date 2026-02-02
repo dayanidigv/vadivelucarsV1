@@ -35,12 +35,22 @@ The following environment variables need to be set in Cloudflare Pages:
 4. Select the admin-app directory
 
 ### 2. Configure Build Settings
-```
-Framework preset: Vite
-Build command: npm run build
-Build output directory: /dist
-Root directory: /admin-app
-```
+In the Cloudflare Pages dashboard, use these exact settings:
+
+**Basic Settings:**
+- **Framework preset**: Vite
+- **Build command**: `npm run build`
+- **Build output directory**: `dist`
+- **Root directory**: `admin-app` (important!)
+
+**Advanced Settings:**
+- **Node.js version**: `18` or later
+- **Environment variables**: Set in the next step
+
+**Important Notes:**
+- The Root directory must be set to `admin-app` since that's where the admin app is located
+- Build command must be `npm run build` (not `npm ci`)
+- Output directory is `dist` relative to the root directory
 
 ### 3. Set Environment Variables
 In Cloudflare Pages dashboard → Settings → Environment variables:
