@@ -266,6 +266,20 @@ class ApiClient {
             method: 'POST',
         })
     }
+
+    // Customer-specific endpoints
+    async getCustomerInvoices(page = 1, limit = 20) {
+        return this.request<any>(`/api/customer/invoices?page=${page}&limit=${limit}`)
+    }
+
+    async getCustomerInvoice(id: string) {
+        return this.request<any>(`/api/customer/invoices/${id}`)
+    }
+
+    // Shared invoice print endpoint
+    async getInvoiceForPrint(id: string) {
+        return this.request<any>(`/api/invoices/${id}/print`)
+    }
 }
 
 export const api = new ApiClient(API_URL)

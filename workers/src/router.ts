@@ -6,6 +6,7 @@ import * as dashboardController from './controllers/dashboard'
 import * as authController from './controllers/auth'
 import * as customerAuthController from './controllers/customerAuth'
 import * as userController from './controllers/user'
+import * as customerInvoiceController from './controllers/customerInvoice'
 import { Env } from './lib/supabase'
 
 // Define Bindings to include Env
@@ -19,6 +20,12 @@ router.get('/health', (c) => c.json({ status: 'healthy' }))
 // Authentication
 router.route('/auth', authController.auth)
 router.route('/customer-auth', customerAuthController.customerAuth)
+
+// Customer-specific routes (protected by customer auth)
+router.route('/customer/invoices', customerInvoiceController.customerInvoices)
+
+// Shared invoice print endpoint (accessible by both admin and customer)
+router.get('/invoices/:id/print', invoiceController.print)
 
 // Users Management
 router.get('/users', userController.list)

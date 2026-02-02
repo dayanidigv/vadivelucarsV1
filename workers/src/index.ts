@@ -4,6 +4,7 @@ import { logger } from 'hono/logger'
 import router from './router'
 import { Env } from './lib/supabase'
 import { authMiddleware } from './middleware/auth'
+import { customerAuthMiddleware } from './middleware/customerAuth'
 
 type Bindings = Env
 
@@ -25,6 +26,16 @@ app.use('/api/*', async (c, next) => {
         return
     }
     await authMiddleware(c, next)
+})
+
+// Apply customer authentication middleware to customer routes
+app.use('/api/customer/*', async (c, next) => {
+    // Skip customer auth middleware for customer auth endpoints
+    if (c.req.path.startsWith('/api/customer-auth')) {
+        await next()
+        return
+    }
+    await customerAuthMiddleware(c, next)
 })
 
 // Routes

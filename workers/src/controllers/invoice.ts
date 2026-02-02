@@ -1,6 +1,46 @@
 import { Context } from 'hono'
 import { getSupabaseClient } from '../lib/supabase'
 
+// Shared invoice print endpoint (accessible by both admin and customer)
+export async function print(c: Context) {
+    try {
+        const { id } = c.req.param()
+        const supabase = getSupabaseClient(c.env)
+        
+        // Get user info to determine if it's admin or customer
+        const userContext = c.get('jwtPayload')
+        
+        let query = supabase
+            .from('invoices')
+            .select(`
+                *,
+                customer:customers(id, name, phone, email, address),
+                vehicle:vehicles(id, vehicle_number, make, model, year),
+                invoice_items:invoice_items(id, description, quantity, unit_price, total)
+            `)
+            .eq('id', id)
+
+        // If customer, filter by their own invoices
+        if (userContext?.type === 'customer') {
+            query = query.eq('customer_id', userContext.customerId)
+        }
+
+        const { data, error } = await query.single()
+
+        if (error || !data) {
+            return c.json({ success: false, message: 'Invoice not found' }, 404)
+        }
+
+        return c.json({
+            success: true,
+            data
+        })
+    } catch (error) {
+        console.error('Print invoice error:', error)
+        return c.json({ success: false, message: 'Failed to fetch invoice' }, 500)
+    }
+}
+
 export async function list(c: Context) {
     const supabase = getSupabaseClient(c.env)
 
