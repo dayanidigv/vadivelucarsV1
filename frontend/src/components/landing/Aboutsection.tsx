@@ -112,7 +112,7 @@ export function AboutSection() {
                             className="space-y-6"
                         >
                             <p className="text-lg text-zinc-300 leading-relaxed">
-                                At <span className="font-bold text-white">Vadivelu Cars</span>, we have been providing reliable and affordable car services since <span className="font-bold text-white">2012</span>. With <span className="font-bold text-white">12+ years of experience</span>, our expert technicians specialize in multi-brand car repairs, maintenance, and doorstep services.
+                                At <span className="font-bold text-white">Vadivelu Cars</span>, we have been providing reliable and affordable car services since <span className="font-bold text-white">2012</span>. With <span className="font-bold text-white">15+ years of experience</span>, our expert technicians specialize in multi-brand car repairs, maintenance, and doorstep services.
                             </p>
 
                             <p className="text-lg text-zinc-400 leading-relaxed">
