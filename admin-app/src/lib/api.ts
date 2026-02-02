@@ -1,4 +1,4 @@
-export const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8787'
+export const API_URL = import.meta.env.VITE_API_URL || 'https://api.vadivelucars.in'
 
 export class ApiClient {
     private baseUrl: string
@@ -16,7 +16,7 @@ export class ApiClient {
         // Get tokens from localStorage for different user types
         const adminToken = localStorage.getItem('token')
         const customerToken = localStorage.getItem('customerToken')
-        
+
         const headers: HeadersInit = {
             'Content-Type': 'application/json',
             ...options?.headers,
@@ -51,7 +51,7 @@ export class ApiClient {
             (headers as Record<string, string>)['Authorization'] = `Bearer ${token}`
             console.log(`🔐 Adding ${tokenType} auth header for:`, endpoint, 'Token length:', token.length)
         } else {
-            console.log(`🔓 No auth header for:`, endpoint, { 
+            console.log(`🔓 No auth header for:`, endpoint, {
                 tokenType,
                 hasAdminToken: !!adminToken,
                 hasCustomerToken: !!customerToken,
