@@ -34,13 +34,14 @@ app.get('/health', (c) => {
         isDev: !!c.env.DEV
     }
 
-    const allEnvSet = Object.values(envStatus).every(Boolean)
+    // Only require Supabase credentials for health, not DEV flag
+    const essentialEnvSet = envStatus.hasSupabaseUrl && envStatus.hasSupabaseAnonKey && envStatus.hasSupabaseServiceKey
 
     return c.json({
-        status: allEnvSet ? 'healthy' : 'unhealthy',
+        status: essentialEnvSet ? 'healthy' : 'unhealthy',
         timestamp: new Date().toISOString(),
         environment: envStatus
-    }, allEnvSet ? 200 : 503)
+    }, essentialEnvSet ? 200 : 503)
 })
 
 app.route('/api', router)
