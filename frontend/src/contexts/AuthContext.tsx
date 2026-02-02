@@ -74,7 +74,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     try {
       if (token) {
         // Call logout API to invalidate session
-        const response = await fetch(`${import.meta.env.VITE_API_URL || 'https://vadivelucars.workers.dev'}/api/auth/logout`, {
+        const response = await fetch(`${import.meta.env.VITE_API_URL || 'https://vadivelucars.dayanidigv954.workers.dev'}/api/auth/logout`, {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${token}`,
