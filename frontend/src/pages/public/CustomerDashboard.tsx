@@ -4,7 +4,7 @@ import { useCustomerInvoices } from "@/hooks/useInvoices"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Car, Calendar, DollarSign, FileText, Plus, Filter, Clock, TrendingUp, AlertCircle, User, MessageSquare } from "lucide-react"
+import { Car, FileText, Filter, Clock, TrendingUp, AlertCircle, User, MessageSquare } from "lucide-react"
 import { Helmet } from "react-helmet-async"
 import CustomerProfile from '@/components/customer/CustomerProfile'
 import CustomerFeedback from '@/components/customer/CustomerFeedback'
@@ -12,7 +12,7 @@ import VehicleManagement from '@/components/vehicle/VehicleManagement'
 
 export default function CustomerDashboard() {
     const { id } = useParams()
-    const { data: invoicesData, isLoading: invoicesLoading } = useCustomerInvoices()
+    const { data: invoicesData } = useCustomerInvoices()
     const [customer, setCustomer] = useState<any>(null)
     const [loading, setLoading] = useState(true)
     const [filter, setFilter] = useState<'all' | 'active' | 'inactive'>('all')
@@ -37,7 +37,7 @@ export default function CustomerDashboard() {
                 const customerData = localStorage.getItem('customer')
                 if (customerData) {
                     const customer = JSON.parse(customerData)
-                    
+
                     // Verify this is the correct customer
                     if (customer.id === id) {
                         setCustomer(customer)
@@ -377,6 +377,8 @@ export default function CustomerDashboard() {
                         <CustomerProfile
                             customerId={id as string}
                             onUpdate={setCustomer}
+                            customer={customer}
+                            readOnly={true}
                         />
                     )}
 

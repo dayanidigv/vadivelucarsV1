@@ -103,7 +103,7 @@ export async function get(c: Context) {
         .from('invoices')
         .select(`
       *,
-      customer:customers(*),
+      customer:customers(*, vehicles(*)),
       vehicle:vehicles(*),
       items:invoice_items(*)
     `)

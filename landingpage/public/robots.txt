@@ -1,0 +1,52 @@
+User-agent: *
+Allow: /
+
+# Allow all search engines to crawl the site
+Allow: /location
+Allow: /contact
+Allow: /about
+Allow: /blog
+Allow: /privacy-policy
+Allow: /terms-of-service
+
+# Allow important assets
+Allow: /assets/
+Allow: /og-image.jpg
+Allow: /twitter-image.jpg
+Allow: /favicon.ico
+Allow: /sitemap.xml
+
+# Sitemap location
+Sitemap: https://vadivelucars.in/sitemap.xml
+
+# Crawl delay (optional, be nice to servers)
+Crawl-delay: 1
+
+# Special instructions for major search engines
+User-agent: Googlebot
+Allow: /
+Crawl-delay: 1
+
+User-agent: Bingbot
+Allow: /
+Crawl-delay: 1
+
+User-agent: Slurp
+Allow: /
+Crawl-delay: 1
+
+# Block unwanted bots
+User-agent: AhrefsBot
+Disallow: /
+
+User-agent: MJ12bot
+Disallow: /
+
+User-agent: DotBot
+Disallow: /
+
+User-agent: BLEXBot
+Disallow: /
+
+User-agent: BacklinkCrawler
+Disallow: /

@@ -13,9 +13,9 @@ export interface CustomerAuthContext {
 
 export async function customerAuthMiddleware(c: Context<{ Bindings: Env }>, next: Next) {
   try {
-    console.log('Customer auth middleware called for path:', c.req.path)
     const authHeader = c.req.header('Authorization')
-    
+    const jwtSecret = c.env.CUSTOMER_JWT_SECRET || 'fallback-secret-for-dev'
+
     // Skip auth for customer auth endpoints
     if (c.req.path.startsWith('/api/customer-auth')) {
       await next()
@@ -23,28 +23,20 @@ export async function customerAuthMiddleware(c: Context<{ Bindings: Env }>, next
     }
 
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      console.log('No auth header found')
       return c.json({ success: false, message: 'Authorization token required' }, 401)
     }
 
     const token = authHeader.substring(7)
-    console.log('Token found, length:', token.length)
-    
+
     // Verify and decode customer JWT token
-    const payload = await verify(token, CUSTOMER_JWT_SECRET, 'HS256').catch((err) => {
-      console.log('JWT verification failed:', err.message)
+    const payload = await verify(token, jwtSecret, 'HS256').catch((err) => {
+      // console.debug('JWT verification failed:', err.message)
       return null
     })
+
     if (!payload || payload.type !== 'customer') {
-      console.log('Invalid payload or type:', payload?.type)
       return c.json({ success: false, message: 'Invalid or expired customer token' }, 401)
     }
-
-    console.log('Customer auth check:', { 
-      path: c.req.path, 
-      customerId: payload.customerId,
-      sessionId: payload.sessionId
-    })
 
     // Check if customer session exists and is not expired
     const supabase = getSupabaseClient(c.env)
@@ -56,21 +48,12 @@ export async function customerAuthMiddleware(c: Context<{ Bindings: Env }>, next
       .single()
 
     if (error || !session || new Date(session.expires_at) < new Date()) {
-      console.log('Customer session validation failed')
       return c.json({ success: false, message: 'Session expired' }, 401)
     }
 
-    // Get customer details
-    const { data: customer, error: customerError } = await supabase
-      .from('customers')
-      .select('id, name, phone, email, address')
-      .eq('id', payload.customerId)
-      .single()
-
-    if (customerError || !customer) {
-      console.log('Customer validation failed:', customerError?.message)
-      return c.json({ success: false, message: 'Customer not found' }, 401)
-    }
+    // We trust verified JWT + Session check
+    // No need to query customer table again as we have id and phone in token
+    // This reduces DB calls from 2 to 1 per request
 
     // Add customer info to context using jwtPayload key
     c.set('jwtPayload', {
@@ -80,7 +63,6 @@ export async function customerAuthMiddleware(c: Context<{ Bindings: Env }>, next
       type: 'customer'
     } as CustomerAuthContext & { type: string })
 
-    console.log('Customer auth successful for:', customer.name)
     await next()
   } catch (error) {
     console.error('Customer auth middleware error:', error)

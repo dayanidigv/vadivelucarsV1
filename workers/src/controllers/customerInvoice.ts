@@ -16,7 +16,6 @@ export async function list(c: Context) {
             .from('invoices')
             .select(`
                 *,
-                customer:customers(id, name, phone, email, address),
                 vehicle:vehicles(id, vehicle_number, make, model, year)
             `)
             .eq('customer_id', customer.customerId)
@@ -101,6 +100,10 @@ export async function test(c: Context) {
 // Register routes with customer auth middleware
 import { customerAuthMiddleware } from '../middleware/customerAuth'
 
+// Note: customerAuthMiddleware is already applied globally in index.ts for /api/customer/*
+// so we don't need to apply it again here.
+// Note: customerAuthMiddleware is already applied globally in index.ts for /api/customer/*
+// But we suspect context loss with Hono router mounting, so re-applying it explicitly for safety.
 customerInvoices.use('*', customerAuthMiddleware)
 customerInvoices.get('/test', test)
 customerInvoices.get('/', list)

@@ -7,6 +7,9 @@ import * as authController from './controllers/auth'
 import * as customerAuthController from './controllers/customerAuth'
 import * as userController from './controllers/user'
 import * as customerInvoiceController from './controllers/customerInvoice'
+import * as customerProfileController from './controllers/customerProfile'
+import * as customerVehicleController from './controllers/customerVehicle'
+import * as customerFeedbackController from './controllers/customerFeedback'
 import { Env } from './lib/supabase'
 
 // Define Bindings to include Env
@@ -23,6 +26,16 @@ router.route('/customer-auth', customerAuthController.customerAuth)
 
 // Customer-specific routes (protected by customer auth)
 router.route('/customer/invoices', customerInvoiceController.customerInvoices)
+router.get('/customer/profile', customerProfileController.getProfile)
+router.put('/customer/profile', customerProfileController.updateProfile)
+router.post('/customer/profile/send-verification', customerProfileController.sendPhoneVerification)
+router.get('/customer/vehicles', customerVehicleController.getVehicles)
+router.post('/customer/vehicles', customerVehicleController.addVehicle)
+router.put('/customer/vehicles/:id', customerVehicleController.updateVehicle)
+router.delete('/customer/vehicles/:id', customerVehicleController.deactivateVehicle)
+router.post('/customer/vehicles/:id/reactivate', customerVehicleController.reactivateVehicle)
+router.post('/customer/feedback', customerFeedbackController.submitFeedback)
+router.get('/customer/feedback/history', customerFeedbackController.getFeedbackHistory)
 
 // Test route
 router.get('/customer/test', (c) => c.json({ success: true, message: 'Test route working' }))

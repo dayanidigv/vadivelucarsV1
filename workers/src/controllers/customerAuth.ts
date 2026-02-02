@@ -6,7 +6,7 @@ import { getSupabaseClient, Env } from '../lib/supabase'
 const customerAuth = new Hono<{ Bindings: Env }>()
 
 // JWT Secret - In production, use environment variable
-const JWT_SECRET = 'vadivelu-cars-customer-secret-key'
+// JWT Secret managed via env
 
 // Public API to check phone number availability
 customerAuth.post('/check-phone', async (c) => {
@@ -60,38 +60,40 @@ customerAuth.post('/login', async (c) => {
   try {
     const { phone, vehicleNumber } = await c.req.json()
     const supabase = getSupabaseClient(c.env)
+    const jwtSecret = c.env.CUSTOMER_JWT_SECRET || 'fallback-secret-for-dev'
 
-    if (!phone) {
-      return c.json({ success: false, message: 'Phone number is required' }, 400)
+    if (!phone || !vehicleNumber) {
+      return c.json({ success: false, message: 'Phone number and Vehicle number are required' }, 400)
     }
 
-    // Find customer by phone with vehicles and invoices
+    // Find customer by phone with vehicles
+    // We don't need invoices here, just credentials verification
     const { data: customer, error } = await supabase
       .from('customers')
       .select(`
       *,
-      vehicles:vehicles(*),
-      invoices:invoices(
-        *,
-        vehicles:vehicles(id, vehicle_number, make, model, year)
-      )
+      vehicles:vehicles(*)
     `)
       .eq('phone', phone)
       .single()
 
     if (error || !customer) {
-      return c.json({ success: false, message: 'Phone number not found' }, 404)
+      // Generic error for security
+      return c.json({ success: false, message: 'Invalid credentials' }, 401)
     }
 
-    // If vehicle number is provided, validate it belongs to this customer
-    if (vehicleNumber) {
-      const hasVehicle = customer.vehicles?.some((vehicle: any) => 
-        vehicle.vehicle_number.toLowerCase() === vehicleNumber.toLowerCase()
-      )
+    // Validate vehicle number (Acts as password)
+    // Normalize string: remove spaces, lowercase
+    const normalize = (s: string) => s.replace(/\\s+/g, '').toLowerCase()
+    const inputVehicle = normalize(vehicleNumber)
 
-      if (!hasVehicle) {
-        return c.json({ success: false, message: 'Vehicle number not found for this customer' }, 404)
-      }
+    const hasVehicle = customer.vehicles?.some((vehicle: any) =>
+      normalize(vehicle.vehicle_number) === inputVehicle
+    )
+
+    if (!hasVehicle) {
+      console.warn(`Failed login attempt for ${phone}: Vehicle mismatch`)
+      return c.json({ success: false, message: 'Invalid credentials' }, 401)
     }
 
     // Create session token
@@ -111,7 +113,7 @@ customerAuth.post('/login', async (c) => {
 
     if (sessionError) {
       console.error('Session creation error:', sessionError)
-      return c.json({ success: false, message: 'Failed to create session' }, 500)
+      return c.json({ success: false, message: 'Login failed' }, 500)
     }
 
     // Create JWT token
@@ -120,7 +122,10 @@ customerAuth.post('/login', async (c) => {
       phone: customer.phone,
       type: 'customer',
       sessionId: sessionToken
-    }, JWT_SECRET)
+    }, jwtSecret)
+
+    // Fetch invoices only after successful auth if needed, or let frontend fetch it
+    // For login response, we'll keep it light but include basic info
 
     return c.json({
       success: true,
@@ -132,8 +137,7 @@ customerAuth.post('/login', async (c) => {
           name: customer.name,
           phone: customer.phone,
           email: customer.email,
-          vehicles: customer.vehicles,
-          invoices: customer.invoices
+          vehicles: customer.vehicles
         },
         expiresIn: 7 * 24 * 60 * 60 // 7 days in seconds
       }
@@ -149,15 +153,16 @@ customerAuth.post('/login', async (c) => {
 customerAuth.post('/logout', async (c) => {
   try {
     const supabase = getSupabaseClient(c.env)
+    const jwtSecret = c.env.CUSTOMER_JWT_SECRET || 'fallback-secret-for-dev'
     const authHeader = c.req.header('Authorization')
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return c.json({ success: false, message: 'No token provided' }, 401)
     }
 
     const token = authHeader.substring(7)
-    
+
     // Verify and decode token
-    const payload = await verify(token, JWT_SECRET, 'HS256').catch(() => null)
+    const payload = await verify(token, jwtSecret, 'HS256').catch(() => null)
     if (!payload || payload.type !== 'customer') {
       return c.json({ success: false, message: 'Invalid token' }, 401)
     }
@@ -183,15 +188,16 @@ customerAuth.post('/logout', async (c) => {
 customerAuth.get('/verify', async (c) => {
   try {
     const supabase = getSupabaseClient(c.env)
+    const jwtSecret = c.env.CUSTOMER_JWT_SECRET || 'fallback-secret-for-dev'
     const authHeader = c.req.header('Authorization')
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return c.json({ success: false, message: 'No token provided' }, 401)
     }
 
     const token = authHeader.substring(7)
-    
+
     // Verify and decode token
-    const payload = await verify(token, JWT_SECRET, 'HS256').catch(() => null)
+    const payload = await verify(token, jwtSecret, 'HS256').catch(() => null)
     if (!payload || payload.type !== 'customer') {
       return c.json({ success: false, message: 'Invalid token' }, 401)
     }
