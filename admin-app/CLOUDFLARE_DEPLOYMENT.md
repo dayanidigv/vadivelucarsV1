@@ -51,6 +51,7 @@ In the Cloudflare Pages dashboard, use these exact settings:
 - The Root directory must be set to `admin-app` since that's where the admin app is located
 - Build command must be `npm run build` (not `npm ci`)
 - Output directory is `dist` relative to the root directory
+- Do NOT use wrangler.toml for Pages deployment - use dashboard settings only
 
 ### 3. Set Environment Variables
 In Cloudflare Pages dashboard → Settings → Environment variables:

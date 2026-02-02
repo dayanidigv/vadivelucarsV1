@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://vadivelucars.in/sitemap.xml
+Sitemap: https://customer.vadivelucars.in/sitemap.xml

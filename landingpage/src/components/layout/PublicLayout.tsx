@@ -52,7 +52,7 @@ export function PublicLayout() {
                                 <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-gradient-to-r from-zinc-400 to-zinc-600 group-hover:w-full transition-all duration-300"></span>
                             </a>
                             <Link
-                                to="/login"
+                                to="https://customer.vadivelucars.in/"
                                 className="relative bg-gradient-to-r from-[#4A9EFF] via-[#015AE4] to-[#013A94] hover:from-[#4A9EFF] hover:via-[#4A9EFF] hover:to-[#4A9EFF] text-white px-6 py-2.5 rounded-full text-sm font-bold transition-all duration-300 shadow-lg shadow-zinc-900/50 hover:shadow-zinc-700/50 border border-[#4A9EFF]/50 hover:border-[#4A9EFF]/70 overflow-hidden group"
                             >
                                 <span className="relative z-10 flex items-center gap-2">Track Status</span>
@@ -80,17 +80,17 @@ export function PublicLayout() {
 
             {/* Mobile Menu Overlay - Metallic Black */}
             <div className={`fixed inset-0 z-50 bg-black/98 backdrop-blur-2xl transition-opacity duration-300 md:hidden flex flex-col items-center justify-center space-y-8 ${isMenuOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}>
-                {/* Close Button */}
+                {/* Background gradient */}
+                <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_rgba(113,113,122,0.15)_0%,_transparent_70%)]"></div>
+
+                {/* Close Button - Moved below background for clickability */}
                 <button
                     onClick={() => setIsMenuOpen(false)}
-                    className="absolute top-6 right-6 text-zinc-400 hover:text-white p-2 transition-colors duration-300 rounded-lg hover:bg-zinc-800/50"
+                    className="absolute top-6 right-6 text-zinc-400 hover:text-white p-2 transition-colors duration-300 rounded-lg hover:bg-zinc-800/50 z-10"
                     aria-label="Close navigation menu"
                 >
                     <X className="w-8 h-8" />
                 </button>
-
-                {/* Background gradient */}
-                <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_rgba(113,113,122,0.15)_0%,_transparent_70%)]"></div>
 
                 {/* Menu Items */}
                 <div className="relative flex flex-col items-center space-y-8">
@@ -109,7 +109,7 @@ export function PublicLayout() {
                         About
                     </a>
                     <Link
-                        to="/login"
+                        to="https://customer.vadivelucars.in/"
                         className="relative bg-gradient-to-r from-[#4A9EFF] via-[#015AE4] to-[#013A94] hover:from-[#4A9EFF] hover:via-[#4A9EFF] hover:to-[#4A9EFF] text-white px-8 py-3 rounded-full text-xl font-bold shadow-2xl shadow-zinc-900/50 transition-all duration-300 border border-[#4A9EFF]/50 overflow-hidden group"
                         onClick={() => setIsMenuOpen(false)}
                     >
