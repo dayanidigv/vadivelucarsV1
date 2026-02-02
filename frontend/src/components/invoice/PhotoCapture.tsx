@@ -78,6 +78,9 @@ export default function PhotoCapture({ photos, onPhotosChange }: PhotoCapturePro
                 <div key={index} className="relative group">
                   <img
                     src={photo}
+                    width="100"
+                    height="96"
+                    loading="lazy"
                     alt={`Damage photo ${index + 1}`}
                     className="w-full h-24 object-cover rounded-lg"
                   />

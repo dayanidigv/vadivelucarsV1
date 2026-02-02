@@ -24,6 +24,9 @@ router.route('/customer-auth', customerAuthController.customerAuth)
 // Customer-specific routes (protected by customer auth)
 router.route('/customer/invoices', customerInvoiceController.customerInvoices)
 
+// Test route
+router.get('/customer/test', (c) => c.json({ success: true, message: 'Test route working' }))
+
 // Shared invoice print endpoint (accessible by both admin and customer)
 router.get('/invoices/:id/print', invoiceController.print)
 

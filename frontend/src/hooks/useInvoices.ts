@@ -18,6 +18,29 @@ export function useInvoice(id: string) {
     })
 }
 
+export function useInvoiceForPrint(id: string) {
+    return useQuery({
+        queryKey: ['invoices', id, 'print'],
+        queryFn: () => api.getInvoiceForPrint(id),
+        enabled: !!id,
+    })
+}
+
+export function useCustomerInvoice(id: string) {
+    return useQuery({
+        queryKey: ['customer', 'invoices', id],
+        queryFn: () => api.getCustomerInvoice(id),
+        enabled: !!id,
+    })
+}
+
+export function useCustomerInvoices() {
+    return useQuery({
+        queryKey: ['customer', 'invoices'],
+        queryFn: () => api.getCustomerInvoices(),
+    })
+}
+
 export function useCreateInvoice() {
     const queryClient = useQueryClient()
 

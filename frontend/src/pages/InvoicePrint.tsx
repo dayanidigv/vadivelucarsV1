@@ -1,12 +1,12 @@
 import { useParams } from "react-router-dom"
-import { useInvoice } from "@/hooks/useInvoices"
+import { useInvoiceForPrint } from "@/hooks/useInvoices"
 import { Helmet } from "react-helmet-async"
 import { PDFViewer } from "@react-pdf/renderer"
 import InvoicePDF from "@/components/invoices/InvoicePDF"
 
 export default function InvoicePrint() {
     const { id } = useParams()
-    const { data: invoiceResult, isLoading } = useInvoice(id as string)
+    const { data: invoiceResult, isLoading } = useInvoiceForPrint(id as string)
     const invoice = invoiceResult?.data
 
     if (isLoading) return <div className="p-8 text-center text-gray-500">Loading invoice...</div>

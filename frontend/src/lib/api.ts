@@ -36,6 +36,10 @@ export class ApiClient {
         } else if (endpoint.startsWith('/api/auth')) {
             // Admin auth endpoints - no token needed
             tokenType = 'none'
+        } else if (endpoint.startsWith('/api/invoices/') && endpoint.endsWith('/print')) {
+            // Shared invoice print endpoint - try customer token first, then admin token
+            token = customerToken || adminToken
+            tokenType = customerToken ? 'customer' : (adminToken ? 'admin' : 'none')
         } else {
             // Admin protected routes - use admin token
             token = adminToken
@@ -119,6 +123,13 @@ export class ApiClient {
         return this.request<any>('/api/customer-auth/login', {
             method: 'POST',
             body: JSON.stringify({ phone }),
+        })
+    }
+
+    async customerLoginWithVehicle(phone: string, vehicleNumber: string) {
+        return this.request<any>('/api/customer-auth/login', {
+            method: 'POST',
+            body: JSON.stringify({ phone, vehicleNumber }),
         })
     }
 

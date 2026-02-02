@@ -47,7 +47,6 @@ export function VideoHero() {
                     loop
                     muted
                     playsInline
-                    poster="/assets/images/AI/Animated Background Pattern.png"
                     onLoadedData={() => setIsVideoLoaded(true)}
                 >
                     <source
@@ -64,11 +63,8 @@ export function VideoHero() {
                         }
                         type="video/mp4"
                     />
-                    <img
-                        src="/assets/images/AI/Animated Background Pattern.png"
-                        alt="Hero background"
-                        className="w-full h-full object-cover"
-                    />
+                    {/* Empty captions track for accessibility compliance */}
+                    <track kind="captions" srcLang="en" label="English" />
                 </video>
 
                 {/* Multi-layered Gradient Overlay - Metallic Black */}

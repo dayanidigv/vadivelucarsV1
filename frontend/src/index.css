@@ -6,7 +6,8 @@
   src: url('/font/Revue Std Bold/Revue Std Bold.otf') format('opentype');
   font-weight: 700;
   font-style: normal;
-  font-display: swap;
+  font-display: optional;
+  /* Prevent render-blocking, use fallback if font not cached */
 }
 
 @custom-variant dark (&:is(.dark *));

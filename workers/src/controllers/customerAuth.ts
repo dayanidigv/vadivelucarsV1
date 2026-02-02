@@ -55,20 +55,27 @@ customerAuth.post('/check-phone', async (c) => {
   }
 })
 
-// Customer Login endpoint (phone-based)
+// Customer Login endpoint (phone-based with vehicle validation)
 customerAuth.post('/login', async (c) => {
   try {
-    const { phone } = await c.req.json()
+    const { phone, vehicleNumber } = await c.req.json()
     const supabase = getSupabaseClient(c.env)
 
     if (!phone) {
       return c.json({ success: false, message: 'Phone number is required' }, 400)
     }
 
-    // Find customer by phone
+    // Find customer by phone with vehicles and invoices
     const { data: customer, error } = await supabase
       .from('customers')
-      .select('*')
+      .select(`
+      *,
+      vehicles:vehicles(*),
+      invoices:invoices(
+        *,
+        vehicles:vehicles(id, vehicle_number, make, model, year)
+      )
+    `)
       .eq('phone', phone)
       .single()
 
@@ -76,12 +83,23 @@ customerAuth.post('/login', async (c) => {
       return c.json({ success: false, message: 'Phone number not found' }, 404)
     }
 
+    // If vehicle number is provided, validate it belongs to this customer
+    if (vehicleNumber) {
+      const hasVehicle = customer.vehicles?.some((vehicle: any) => 
+        vehicle.vehicle_number.toLowerCase() === vehicleNumber.toLowerCase()
+      )
+
+      if (!hasVehicle) {
+        return c.json({ success: false, message: 'Vehicle number not found for this customer' }, 404)
+      }
+    }
+
     // Create session token
     const sessionToken = uuidv4()
     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 days
 
     // Store customer session
-    await supabase
+    const { error: sessionError } = await supabase
       .from('customer_sessions')
       .insert({
         customer_id: customer.id,
@@ -90,6 +108,11 @@ customerAuth.post('/login', async (c) => {
         ip_address: c.req.header('x-forwarded-for') || c.req.header('x-real-ip'),
         user_agent: c.req.header('user-agent')
       })
+
+    if (sessionError) {
+      console.error('Session creation error:', sessionError)
+      return c.json({ success: false, message: 'Failed to create session' }, 500)
+    }
 
     // Create JWT token
     const token = await sign({
@@ -108,7 +131,9 @@ customerAuth.post('/login', async (c) => {
           id: customer.id,
           name: customer.name,
           phone: customer.phone,
-          email: customer.email
+          email: customer.email,
+          vehicles: customer.vehicles,
+          invoices: customer.invoices
         },
         expiresIn: 7 * 24 * 60 * 60 // 7 days in seconds
       }

@@ -277,8 +277,11 @@ export default function VehicleManagement({
                         <img
                           key={index}
                           src={photo}
+                          width="80"
+                          height="60"
+                          loading="lazy"
                           alt={`Vehicle photo ${index + 1}`}
-                          className="w-full h-16 object-cover rounded"
+                          className="w-full h-16 object-cover rounded border border-gray-200"
                         />
                       ))}
                       {vehicle.photos.length > 3 && (

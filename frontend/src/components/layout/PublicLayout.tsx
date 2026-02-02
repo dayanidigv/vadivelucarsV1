@@ -22,11 +22,17 @@ export function PublicLayout() {
                     <div className="flex justify-between items-center h-20">
                         {/* Logo - Left side */}
                         <Link to="/" className="flex-shrink-0 flex items-center gap-3 cursor-pointer group">
-                            <img
-                                src="/assets/images/vadivelu_cars.png"
-                                className="h-12 w-auto object-contain transition-transform duration-300 group-hover:scale-105"
-                                alt="Vadivelu Cars"
-                            />
+                            <picture>
+                                <source srcSet="/assets/images/vadivelu_cars.png" type="image/png" />
+                                <img
+                                    src="/assets/images/vadivelu_cars.png"
+                                    width="96"
+                                    height="96"
+                                    loading="eager"
+                                    alt="Vadivelu Cars"
+                                    className="h-12 w-auto object-contain transition-transform duration-300 group-hover:scale-105"
+                                />
+                            </picture>
                         </Link>
 
                         {/* Desktop Menu - Centered */}
@@ -60,6 +66,7 @@ export function PublicLayout() {
                             <button
                                 onClick={() => setIsMenuOpen(true)}
                                 className="p-2 text-zinc-300 hover:text-white transition-colors duration-300 rounded-lg hover:bg-zinc-800/50"
+                                aria-label="Open navigation menu"
                             >
                                 <Menu className="w-6 h-6" />
                             </button>
@@ -77,6 +84,7 @@ export function PublicLayout() {
                 <button
                     onClick={() => setIsMenuOpen(false)}
                     className="absolute top-6 right-6 text-zinc-400 hover:text-white p-2 transition-colors duration-300 rounded-lg hover:bg-zinc-800/50"
+                    aria-label="Close navigation menu"
                 >
                     <X className="w-8 h-8" />
                 </button>

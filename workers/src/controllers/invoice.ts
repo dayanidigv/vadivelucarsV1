@@ -1,22 +1,42 @@
 import { Context } from 'hono'
 import { getSupabaseClient } from '../lib/supabase'
+import { authMiddleware } from '../middleware/auth'
+import { customerAuthMiddleware } from '../middleware/customerAuth'
 
 // Shared invoice print endpoint (accessible by both admin and customer)
 export async function print(c: Context) {
     try {
         const { id } = c.req.param()
         const supabase = getSupabaseClient(c.env)
-        
-        // Get user info to determine if it's admin or customer
-        const userContext = c.get('jwtPayload')
-        
+
+        // Check authentication type and validate accordingly
+        const authHeader = c.req.header('Authorization')
+        let userContext = null
+
+        if (authHeader?.startsWith('Bearer ')) {
+
+            // Try admin auth first
+            await authMiddleware(c, async () => { })
+            userContext = c.get('jwtPayload')
+
+            // If admin auth failed (no jwtPayload), try customer auth
+            if (!userContext) {
+                await customerAuthMiddleware(c, async () => { })
+                userContext = c.get('jwtPayload')
+            }
+        }
+
+        if (!userContext) {
+            return c.json({ success: false, message: 'Authentication required' }, 401)
+        }
+
         let query = supabase
             .from('invoices')
             .select(`
                 *,
+                items:invoice_items(*),
                 customer:customers(id, name, phone, email, address),
-                vehicle:vehicles(id, vehicle_number, make, model, year),
-                invoice_items:invoice_items(id, description, quantity, unit_price, total)
+                vehicle:vehicles(id, vehicle_number, make, model, year)
             `)
             .eq('id', id)
 

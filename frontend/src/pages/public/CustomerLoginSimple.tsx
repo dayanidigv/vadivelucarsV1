@@ -24,38 +24,8 @@ export default function CustomerLoginSimple() {
         setLoading(true)
 
         try {
-            // First check if phone number exists using public API
-            const phoneCheckResult = await api.checkCustomerPhone(phone)
-            
-            if (!phoneCheckResult.success || !phoneCheckResult.available) {
-                toast.error('Phone number not found. Please register first.')
-                setLoading(false)
-                return
-            }
-
-            // Get full customer data with vehicles using authenticated API
-            const customerResult = await api.searchCustomers(phone)
-            
-            if (!customerResult.success || !customerResult.data?.customers?.length) {
-                toast.error('Unable to fetch customer details. Please try again.')
-                setLoading(false)
-                return
-            }
-
-            // Check if the customer has the specified vehicle
-            const customer = customerResult.data.customers[0]
-            const hasVehicle = customer.vehicles?.some((vehicle: any) => 
-                vehicle.vehicle_number.toLowerCase() === vehicleNumber.toLowerCase()
-            )
-
-            if (!hasVehicle) {
-                toast.error('Vehicle number not found for this customer.')
-                setLoading(false)
-                return
-            }
-
-            // Get customer token from backend
-            const loginResult = await api.customerLogin(phone)
+            // Single API call with phone and vehicle number
+            const loginResult = await api.customerLoginWithVehicle(phone, vehicleNumber)
 
             if (loginResult.success) {
                 // Store customer token and data
@@ -72,7 +42,7 @@ export default function CustomerLoginSimple() {
                     navigate(`/my-car/${loginResult.data.customer.id}`)
                 }
             } else {
-                toast.error('Login failed. Please try again.')
+                toast.error(loginResult.message || 'Login failed. Please check your phone and vehicle number.')
             }
             
         } catch (error) {

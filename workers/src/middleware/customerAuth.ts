@@ -13,6 +13,7 @@ export interface CustomerAuthContext {
 
 export async function customerAuthMiddleware(c: Context<{ Bindings: Env }>, next: Next) {
   try {
+    console.log('Customer auth middleware called for path:', c.req.path)
     const authHeader = c.req.header('Authorization')
     
     // Skip auth for customer auth endpoints
@@ -22,14 +23,20 @@ export async function customerAuthMiddleware(c: Context<{ Bindings: Env }>, next
     }
 
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      console.log('No auth header found')
       return c.json({ success: false, message: 'Authorization token required' }, 401)
     }
 
     const token = authHeader.substring(7)
+    console.log('Token found, length:', token.length)
     
     // Verify and decode customer JWT token
-    const payload = await verify(token, CUSTOMER_JWT_SECRET, 'HS256').catch(() => null)
+    const payload = await verify(token, CUSTOMER_JWT_SECRET, 'HS256').catch((err) => {
+      console.log('JWT verification failed:', err.message)
+      return null
+    })
     if (!payload || payload.type !== 'customer') {
+      console.log('Invalid payload or type:', payload?.type)
       return c.json({ success: false, message: 'Invalid or expired customer token' }, 401)
     }
 
@@ -53,15 +60,15 @@ export async function customerAuthMiddleware(c: Context<{ Bindings: Env }>, next
       return c.json({ success: false, message: 'Session expired' }, 401)
     }
 
-    // Get customer details and check if active
+    // Get customer details
     const { data: customer, error: customerError } = await supabase
       .from('customers')
-      .select('id, name, phone, email, address, is_active')
+      .select('id, name, phone, email, address')
       .eq('id', payload.customerId)
       .single()
 
     if (customerError || !customer) {
-      console.log('Customer validation failed')
+      console.log('Customer validation failed:', customerError?.message)
       return c.json({ success: false, message: 'Customer not found' }, 401)
     }
 

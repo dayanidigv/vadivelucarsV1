@@ -18,13 +18,26 @@ app.use('*', cors({
 }))
 app.use('*', logger())
 
-// Apply authentication middleware to all /api routes except auth endpoints
+// Apply authentication middleware to all /api routes except auth endpoints and customer routes
 app.use('/api/*', async (c, next) => {
     // Skip auth middleware for auth endpoints
     if (c.req.path.startsWith('/api/auth') || c.req.path.startsWith('/api/customer-auth')) {
         await next()
         return
     }
+    
+    // Skip admin auth for customer routes - they will be handled by customer auth middleware
+    if (c.req.path.startsWith('/api/customer/')) {
+        await next()
+        return
+    }
+    
+    // Skip admin auth for shared invoice print endpoint - it will handle both auth types
+    if (c.req.path.startsWith('/api/invoices/') && c.req.path.endsWith('/print')) {
+        await next()
+        return
+    }
+    
     await authMiddleware(c, next)
 })
 

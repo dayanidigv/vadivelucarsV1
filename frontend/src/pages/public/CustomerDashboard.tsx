@@ -1,23 +1,26 @@
-
-import { useEffect, useState } from 'react'
-import { useParams } from 'react-router-dom'
-import { Helmet } from 'react-helmet-async'
-import { Car, FileText, Clock, Filter, AlertCircle, TrendingUp, User, MessageSquare } from 'lucide-react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
-import { api } from '@/lib/api'
+import { useState, useEffect } from "react"
+import { useParams } from "react-router-dom"
+import { useCustomerInvoices } from "@/hooks/useInvoices"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { Car, Calendar, DollarSign, FileText, Plus, Filter, Clock, TrendingUp, AlertCircle, User, MessageSquare } from "lucide-react"
+import { Helmet } from "react-helmet-async"
 import CustomerProfile from '@/components/customer/CustomerProfile'
 import CustomerFeedback from '@/components/customer/CustomerFeedback'
 import VehicleManagement from '@/components/vehicle/VehicleManagement'
 
 export default function CustomerDashboard() {
     const { id } = useParams()
+    const { data: invoicesData, isLoading: invoicesLoading } = useCustomerInvoices()
     const [customer, setCustomer] = useState<any>(null)
     const [loading, setLoading] = useState(true)
     const [filter, setFilter] = useState<'all' | 'active' | 'inactive'>('all')
     const [sortBy, setSortBy] = useState<'name' | 'mileage' | 'recent'>('recent')
     const [activeTab, setActiveTab] = useState<'overview' | 'profile' | 'vehicles' | 'feedback'>('overview')
+
+    // Get invoices from API response
+    const apiInvoices = invoicesData?.data || []
 
     // Handle vehicle updates
     const handleVehiclesChange = (updatedVehicles: any[]) => {
@@ -30,9 +33,19 @@ export default function CustomerDashboard() {
     useEffect(() => {
         async function fetchCustomer() {
             try {
-                const response = await api.getCustomer(id as string)
-                if (response.success) {
-                    setCustomer(response.data)
+                // Get customer data from localStorage (already includes vehicles from login)
+                const customerData = localStorage.getItem('customer')
+                if (customerData) {
+                    const customer = JSON.parse(customerData)
+                    
+                    // Verify this is the correct customer
+                    if (customer.id === id) {
+                        setCustomer(customer)
+                    } else {
+                        console.error('Customer ID mismatch')
+                    }
+                } else {
+                    console.error('No customer data found in localStorage')
                 }
             } catch (error) {
                 console.error('Error fetching customer:', error)
@@ -46,8 +59,8 @@ export default function CustomerDashboard() {
     if (loading) return <div className="min-h-screen flex items-center justify-center text-white">Loading...</div>
     if (!customer) return <div className="min-h-screen flex items-center justify-center text-white">Customer not found</div>
 
-    // Sort invoices by date desc
-    const invoices = customer.invoices?.sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()) || []
+    // Use API invoices instead of localStorage invoices
+    const invoices = apiInvoices
 
     // Calculate statistics
     const totalVehicles = customer.vehicles?.length || 0
@@ -344,7 +357,7 @@ export default function CustomerDashboard() {
                                                             size="sm"
                                                             variant="ghost"
                                                             className="text-brand-600 hover:text-brand-700 hover:bg-brand-50"
-                                                            onClick={() => window.open(`/invoices/${inv.id}/print`, '_blank')}
+                                                            onClick={() => window.location.href = `/customer/invoices/${inv.id}`}
                                                         >
                                                             View Details
                                                         </Button>

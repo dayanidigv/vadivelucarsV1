@@ -80,7 +80,11 @@ export default function LandingPage() {
                 }
                 `}
                 </script>
-                
+
+                {/* Preconnect to external domains for performance */}
+                <link rel="preconnect" href="https://fonts.googleapis.com" />
+                <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
+
                 {/* Sitemap for search engines */}
                 <link rel="sitemap" type="application/xml" href="/sitemap.xml" />
             </Helmet>
