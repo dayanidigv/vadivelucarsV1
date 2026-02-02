@@ -142,6 +142,38 @@ src/
 
 ## Deployment
 
+### Cloudflare Pages (Recommended)
+
+#### Quick Deploy
+1. Push code to Git repository
+2. Go to [Cloudflare Pages](https://pages.cloudflare.com)
+3. Connect your repository
+4. Configure build settings:
+   - **Framework preset**: Vite
+   - **Build command**: `npm run build`
+   - **Build output directory**: `dist`
+   - **Root directory**: `customer-app`
+
+#### Environment Variables
+Set these in Cloudflare Pages dashboard:
+```
+VITE_API_URL=https://your-worker.your-subdomain.workers.dev
+VITE_APP_NAME=Vadivelu Cars Customer Portal
+VITE_ENVIRONMENT=production
+```
+
+#### Manual Deployment
+```bash
+# Install Wrangler CLI
+npm install -g wrangler
+
+# Deploy to preview
+npm run deploy:preview
+
+# Deploy to production
+npm run deploy:production
+```
+
 ### Production Build
 ```bash
 npm run build
