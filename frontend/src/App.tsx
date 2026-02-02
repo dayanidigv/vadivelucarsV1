@@ -5,6 +5,7 @@ import { PublicLayout } from './components/layout/PublicLayout'
 import ProtectedRoute from './components/auth/ProtectedRoute'
 import CustomerProtectedRoute from './components/auth/CustomerProtectedRoute'
 import InvoicePrintProtected from './components/auth/InvoicePrintProtected'
+import { AuthProvider } from './contexts/AuthContext'
 import LandingPage from './pages/public/LandingPage'
 import CustomerLoginSimple from './pages/public/CustomerLoginSimple'
 import CustomerDashboard from './pages/public/CustomerDashboard'
@@ -23,7 +24,8 @@ import { Settings } from './pages/Settings'
 
 function App() {
   return (
-    <Router>
+    <AuthProvider>
+      <Router>
 
       <Routes>
         {/* Public Routes */}
@@ -55,7 +57,8 @@ function App() {
       </Routes>
 
       <Toaster />
-    </Router >
+    </Router>
+    </AuthProvider>
   )
 }
 

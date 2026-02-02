@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 import { api } from '../lib/api'
+import { useAuth } from '../contexts/AuthContext'
 
 export default function AdminLogin() {
   const [credentials, setCredentials] = useState({
@@ -10,6 +11,7 @@ export default function AdminLogin() {
   })
   const [loading, setLoading] = useState(false)
   const navigate = useNavigate()
+  const { login } = useAuth()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -19,8 +21,7 @@ export default function AdminLogin() {
       const data = await api.login(credentials.username, credentials.password)
 
       if (data.success) {
-        localStorage.setItem('token', data.data.token)
-        localStorage.setItem('user', JSON.stringify(data.data.user))
+        login(data.data.token, data.data.user)
         toast.success('Login successful!')
         navigate('/dashboard')
       } else {

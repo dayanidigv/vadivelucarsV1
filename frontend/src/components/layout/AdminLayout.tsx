@@ -1,6 +1,7 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Link, useLocation } from 'react-router-dom'
-import { Home, FileText, Users, Package, BarChart3, Menu, X, Settings } from 'lucide-react'
+import { Home, FileText, Users, Package, BarChart3, Menu, X, Settings, LogOut, User } from 'lucide-react'
+import { useAuth } from '../../contexts/AuthContext'
 
 const navigation = [
     { name: 'Dashboard', href: '/dashboard', icon: Home },
@@ -14,6 +15,20 @@ const navigation = [
 export function AdminLayout({ children }: { children: React.ReactNode }) {
     const location = useLocation()
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+    const [isUserMenuOpen, setIsUserMenuOpen] = useState(false)
+    const { user, logout } = useAuth()
+    const userMenuRef = useRef<HTMLDivElement>(null)
+
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (userMenuRef.current && !userMenuRef.current.contains(event.target as Node)) {
+                setIsUserMenuOpen(false)
+            }
+        }
+
+        document.addEventListener('mousedown', handleClickOutside)
+        return () => document.removeEventListener('mousedown', handleClickOutside)
+    }, [])
 
     return (
         <div className="min-h-screen bg-gray-50 flex flex-col">
@@ -50,6 +65,41 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
                                 )
                             })}
                         </nav>
+
+                        {/* User Menu */}
+                        <div className="relative" ref={userMenuRef}>
+                            <button
+                                onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
+                                className="flex items-center space-x-3 text-sm rounded-md p-2 hover:bg-gray-100 transition-colors"
+                            >
+                                <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center">
+                                    <User className="w-4 h-4 text-primary" />
+                                </div>
+                                <div className="hidden md:block text-left">
+                                    <div className="font-medium text-gray-900">{user?.name || user?.username}</div>
+                                    <div className="text-xs text-gray-500 capitalize">{user?.role}</div>
+                                </div>
+                            </button>
+
+                            {isUserMenuOpen && (
+                                <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50 border border-gray-200">
+                                    <div className="px-4 py-2 border-b border-gray-100">
+                                        <div className="text-sm font-medium text-gray-900">{user?.name || user?.username}</div>
+                                        <div className="text-xs text-gray-500">{user?.email}</div>
+                                    </div>
+                                    <button
+                                        onClick={() => {
+                                            logout()
+                                            setIsUserMenuOpen(false)
+                                        }}
+                                        className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+                                    >
+                                        <LogOut className="mr-2 h-4 w-4" />
+                                        Logout
+                                    </button>
+                                </div>
+                            )}
+                        </div>
 
                         {/* Mobile Menu Button */}
                         <div className="md:hidden">
