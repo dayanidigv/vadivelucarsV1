@@ -24,11 +24,20 @@ export default function CustomerLoginSimple() {
         setLoading(true)
 
         try {
-            // Search customer by phone number
+            // First check if phone number exists using public API
+            const phoneCheckResult = await api.checkCustomerPhone(phone)
+            
+            if (!phoneCheckResult.success || !phoneCheckResult.available) {
+                toast.error('Phone number not found. Please register first.')
+                setLoading(false)
+                return
+            }
+
+            // Get full customer data with vehicles using authenticated API
             const customerResult = await api.searchCustomers(phone)
             
             if (!customerResult.success || !customerResult.data?.customers?.length) {
-                toast.error('Phone number not found. Please register first.')
+                toast.error('Unable to fetch customer details. Please try again.')
                 setLoading(false)
                 return
             }

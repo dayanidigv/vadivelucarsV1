@@ -17,6 +17,12 @@ export function useSearchCustomers(query: string) {
     })
 }
 
+export function useCheckCustomerPhone() {
+    return useMutation({
+        mutationFn: (phone: string) => api.checkCustomerPhone(phone),
+    })
+}
+
 export function useCreateCustomer() {
     const queryClient = useQueryClient()
 
