@@ -64,10 +64,19 @@ export function AuthProvider({ children }: AuthProviderProps) {
   }, [])
 
   const login = (newToken: string, userData: User) => {
+    console.log('🔐 AuthContext.login called:', { 
+      tokenLength: newToken.length, 
+      userId: userData.id,
+      username: userData.username 
+    })
+    
     localStorage.setItem('token', newToken)
     localStorage.setItem('user', JSON.stringify(userData))
     setToken(newToken)
     setUser(userData)
+    
+    console.log('✅ Token stored in localStorage')
+    console.log('🔍 Verify token stored:', localStorage.getItem('token')?.substring(0, 20) + '...')
   }
 
   const logout = async () => {

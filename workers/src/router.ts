@@ -5,6 +5,7 @@ import * as partsController from './controllers/parts'
 import * as dashboardController from './controllers/dashboard'
 import * as authController from './controllers/auth'
 import * as customerAuthController from './controllers/customerAuth'
+import * as userController from './controllers/user'
 import { Env } from './lib/supabase'
 
 // Define Bindings to include Env
@@ -18,6 +19,15 @@ router.get('/health', (c) => c.json({ status: 'healthy' }))
 // Authentication
 router.route('/auth', authController.auth)
 router.route('/customer-auth', customerAuthController.customerAuth)
+
+// Users Management
+router.get('/users', userController.list)
+router.get('/users/:id', userController.get)
+router.post('/users', userController.create)
+router.put('/users/:id', userController.update)
+router.delete('/users/:id', userController.remove)
+router.post('/users/:id/reset-password', userController.resetPassword)
+router.post('/users/:id/toggle-status', userController.toggleStatus)
 
 // Invoices
 router.get('/invoices', invoiceController.list)

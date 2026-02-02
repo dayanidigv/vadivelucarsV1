@@ -5,3 +5,15 @@ compatibility_flags = ["nodejs_compat"]
 
 [build]
 command = "npm run build"
+
+# Environment variables should be set via Cloudflare dashboard
+# Use: wrangler secret put SUPABASE_URL
+# Use: wrangler secret put SUPABASE_ANON_KEY  
+# Use: wrangler secret put SUPABASE_SERVICE_KEY
+
+# Development variables (non-sensitive)
+[env.development]
+vars = { DEV = "true" }
+
+[env.production]
+vars = { DEV = "false" }

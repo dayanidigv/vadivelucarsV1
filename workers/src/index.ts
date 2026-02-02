@@ -81,6 +81,20 @@ app.get('/test-db', async (c) => {
     }
 })
 
+// Debug endpoint to check auth headers
+app.get('/debug-auth', async (c) => {
+    const authHeader = c.req.header('Authorization')
+    
+    return c.json({
+        hasAuthHeader: !!authHeader,
+        authHeaderPrefix: authHeader ? authHeader.substring(0, 20) + '...' : null,
+        authHeaderLength: authHeader ? authHeader.length : 0,
+        userAgent: c.req.header('user-agent'),
+        timestamp: new Date().toISOString(),
+        note: 'This endpoint shows what the server receives'
+    })
+})
+
 app.route('/api', router)
 
 // 404 handler
@@ -90,17 +104,20 @@ app.notFound((c) => {
 
 // Error handler
 app.onError((err, c) => {
-    console.error('Error details:', {
+    console.error('=== ERROR DETAILS ===', {
         message: err.message,
         stack: err.stack,
         url: c.req.url,
         method: c.req.method,
+        path: c.req.path,
+        userAgent: c.req.header('user-agent'),
         env: {
             hasSupabaseUrl: !!c.env.SUPABASE_URL,
             hasSupabaseAnonKey: !!c.env.SUPABASE_ANON_KEY,
             hasSupabaseServiceKey: !!c.env.SUPABASE_SERVICE_KEY
         }
     })
+    console.error('=== END ERROR DETAILS ===')
     
     // In development, send detailed error info
     if (c.env.DEV) {

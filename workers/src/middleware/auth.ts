@@ -26,7 +26,14 @@ export async function authMiddleware(c: Context<{ Bindings: Env }>, next: Next) 
       return
     }
 
+    console.log('Auth middleware check:', { 
+      path: c.req.path, 
+      hasAuthHeader: !!authHeader,
+      authHeaderPrefix: authHeader?.substring(0, 20) + '...'
+    })
+
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      console.log('Missing or invalid auth header')
       return c.json({ success: false, message: 'Authorization token required' }, 401)
     }
 
@@ -35,8 +42,11 @@ export async function authMiddleware(c: Context<{ Bindings: Env }>, next: Next) 
     // Verify and decode JWT token
     const payload = await verify(token, JWT_SECRET, 'HS256').catch(() => null)
     if (!payload) {
+      console.log('JWT verification failed')
       return c.json({ success: false, message: 'Invalid or expired token' }, 401)
     }
+
+    console.log('JWT payload:', { userId: payload.userId, sessionId: payload.sessionId })
 
     // Check if session exists and is not expired
     const supabase = getSupabaseClient(c.env)
@@ -47,7 +57,10 @@ export async function authMiddleware(c: Context<{ Bindings: Env }>, next: Next) 
       .eq('user_id', payload.userId)
       .single()
 
+    console.log('Session check:', { error: error?.message, sessionFound: !!session })
+
     if (error || !session || new Date(session.expires_at) < new Date()) {
+      console.log('Session validation failed')
       return c.json({ success: false, message: 'Session expired' }, 401)
     }
 
@@ -58,7 +71,10 @@ export async function authMiddleware(c: Context<{ Bindings: Env }>, next: Next) 
       .eq('id', payload.userId)
       .single()
 
+    console.log('User check:', { error: userError?.message, userFound: !!user, isActive: user?.is_active })
+
     if (userError || !user || !user.is_active) {
+      console.log('User validation failed')
       return c.json({ success: false, message: 'User not found or inactive' }, 401)
     }
 
@@ -71,6 +87,7 @@ export async function authMiddleware(c: Context<{ Bindings: Env }>, next: Next) 
       permissions: user.permissions
     } as AuthContext)
 
+    console.log('Auth middleware successful for user:', user.username)
     await next()
   } catch (error) {
     console.error('Auth middleware error:', error)

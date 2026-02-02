@@ -1,15 +1,16 @@
 import { useState, useEffect, useRef } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { Home, FileText, Users, Package, BarChart3, Menu, X, Settings, LogOut, User } from 'lucide-react'
+import { Home, FileText, Users, Package, BarChart3, Menu, X, Settings, LogOut, UserIcon } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
 
 const navigation = [
-    { name: 'Dashboard', href: '/dashboard', icon: Home },
-    { name: 'Invoices', href: '/invoices', icon: FileText },
-    { name: 'Customers', href: '/customers', icon: Users },
-    { name: 'Parts', href: '/parts', icon: Package },
-    { name: 'Reports', href: '/reports', icon: BarChart3 },
-    { name: 'Settings', href: '/settings', icon: Settings },
+    { name: 'Dashboard', href: '/dashboard', icon: Home, roles: ['admin', 'manager', 'staff', 'technician'] },
+    { name: 'Invoices', href: '/invoices', icon: FileText, roles: ['admin', 'manager', 'staff', 'technician'] },
+    { name: 'Customers', href: '/customers', icon: Users, roles: ['admin', 'manager', 'staff', 'technician'] },
+    { name: 'Parts', href: '/parts', icon: Package, roles: ['admin', 'manager', 'staff', 'technician'] },
+    { name: 'Users', href: '/users', icon: UserIcon, roles: ['admin', 'manager'] },
+    { name: 'Reports', href: '/reports', icon: BarChart3, roles: ['admin'] },
+    { name: 'Settings', href: '/settings', icon: Settings, roles: ['admin', 'manager'] },
 ]
 
 export function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -48,7 +49,9 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
 
                         {/* Desktop Nav */}
                         <nav className="hidden md:flex space-x-1">
-                            {navigation.map((item) => {
+                            {navigation
+                                .filter(item => item.roles.includes(user?.role || ''))
+                                .map((item) => {
                                 const Icon = item.icon
                                 const isActive = location.pathname === item.href || (item.href !== '/' && location.pathname.startsWith(item.href))
                                 return (
@@ -74,7 +77,7 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
                                 className="flex items-center space-x-3 text-sm rounded-md p-2 hover:bg-gray-100 transition-colors"
                             >
                                 <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center">
-                                    <User className="w-4 h-4 text-primary" />
+                                    <UserIcon className="w-4 h-4 text-primary" />
                                 </div>
                                 <div className="hidden md:block text-left">
                                     <div className="font-medium text-gray-900">{user?.name || user?.username}</div>
@@ -123,7 +126,9 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
                 {isMobileMenuOpen && (
                     <div className="md:hidden border-t border-gray-200 bg-white">
                         <div className="px-2 pt-2 pb-3 space-y-1">
-                            {navigation.map((item) => {
+                            {navigation
+                                .filter(item => item.roles.includes(user?.role || ''))
+                                .map((item) => {
                                 const Icon = item.icon
                                 const isActive = location.pathname === item.href || (item.href !== '/' && location.pathname.startsWith(item.href))
                                 return (

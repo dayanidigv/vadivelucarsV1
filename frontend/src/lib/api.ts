@@ -23,6 +23,13 @@ class ApiClient {
         // Add Authorization header for protected endpoints (except auth endpoints)
         if (token && !endpoint.startsWith('/api/auth') && !endpoint.startsWith('/api/customer-auth')) {
             (headers as Record<string, string>)['Authorization'] = `Bearer ${token}`
+            console.log('🔐 Adding auth header for:', endpoint, 'Token length:', token.length)
+        } else {
+            console.log('🔓 No auth header for:', endpoint, { 
+                hasToken: !!token, 
+                isAuthEndpoint: endpoint.startsWith('/api/auth'),
+                isCustomerAuthEndpoint: endpoint.startsWith('/api/customer-auth')
+            })
         }
 
         const response = await fetch(url, {
@@ -32,6 +39,7 @@ class ApiClient {
 
         if (!response.ok) {
             const error = await response.json().catch(() => ({}))
+            console.error('❌ API Error:', { endpoint, status: response.status, error })
             throw new Error(error.error || 'Request failed')
         }
 
@@ -211,6 +219,52 @@ class ApiClient {
 
     async getRevenueReports() {
         return this.request<any>('/api/reports/revenue')
+    }
+
+    // Users Management
+    async getUsers(page = 1, limit = 20) {
+        return this.request<any>(`/api/users?page=${page}&limit=${limit}`)
+    }
+
+    async searchUsers(query: string) {
+        return this.request<any>(`/api/users?search=${encodeURIComponent(query)}`)
+    }
+
+    async getUser(id: string) {
+        return this.request<any>(`/api/users/${id}`)
+    }
+
+    async createUser(data: any) {
+        return this.request<any>('/api/users', {
+            method: 'POST',
+            body: JSON.stringify(data),
+        })
+    }
+
+    async updateUser(id: string, data: any) {
+        return this.request<any>(`/api/users/${id}`, {
+            method: 'PUT',
+            body: JSON.stringify(data),
+        })
+    }
+
+    async deleteUser(id: string) {
+        return this.request<any>(`/api/users/${id}`, {
+            method: 'DELETE',
+        })
+    }
+
+    async resetUserPassword(id: string, data: { newPassword: string }) {
+        return this.request<any>(`/api/users/${id}/reset-password`, {
+            method: 'POST',
+            body: JSON.stringify(data),
+        })
+    }
+
+    async toggleUserStatus(id: string) {
+        return this.request<any>(`/api/users/${id}/toggle-status`, {
+            method: 'POST',
+        })
     }
 }
 

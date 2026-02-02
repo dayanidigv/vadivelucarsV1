@@ -21,6 +21,7 @@ import NotFound from './pages/NotFound'
 import { Dashboard } from './pages/Dashboard'
 import { Reports } from './pages/Reports'
 import { Settings } from './pages/Settings'
+import Users from './pages/Users'
 
 function App() {
   return (
@@ -49,6 +50,7 @@ function App() {
         <Route path="/invoices/:id" element={<ProtectedRoute><AdminLayout><CreateInvoice /></AdminLayout></ProtectedRoute>} />
         <Route path="/customers" element={<ProtectedRoute><AdminLayout><Customers /></AdminLayout></ProtectedRoute>} />
         <Route path="/parts" element={<ProtectedRoute><AdminLayout><Parts /></AdminLayout></ProtectedRoute>} />
+        <Route path="/users" element={<ProtectedRoute><AdminLayout><Users /></AdminLayout></ProtectedRoute>} />
         <Route path="/reports" element={<ProtectedRoute><AdminLayout><Reports /></AdminLayout></ProtectedRoute>} />
         <Route path="/settings" element={<ProtectedRoute><AdminLayout><Settings /></AdminLayout></ProtectedRoute>} />
         
