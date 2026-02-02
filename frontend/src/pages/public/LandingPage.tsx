@@ -80,6 +80,9 @@ export default function LandingPage() {
                 }
                 `}
                 </script>
+                
+                {/* Sitemap for search engines */}
+                <link rel="sitemap" type="application/xml" href="/sitemap.xml" />
             </Helmet>
 
             <main className="bg-slate-950 min-h-screen">
