@@ -25,6 +25,24 @@ app.get('/', (c) => {
     })
 })
 
+// Enhanced health check
+app.get('/health', (c) => {
+    const envStatus = {
+        hasSupabaseUrl: !!c.env.SUPABASE_URL,
+        hasSupabaseAnonKey: !!c.env.SUPABASE_ANON_KEY,
+        hasSupabaseServiceKey: !!c.env.SUPABASE_SERVICE_KEY,
+        isDev: !!c.env.DEV
+    }
+
+    const allEnvSet = Object.values(envStatus).every(Boolean)
+
+    return c.json({
+        status: allEnvSet ? 'healthy' : 'unhealthy',
+        timestamp: new Date().toISOString(),
+        environment: envStatus
+    }, allEnvSet ? 200 : 503)
+})
+
 app.route('/api', router)
 
 // 404 handler
@@ -34,7 +52,31 @@ app.notFound((c) => {
 
 // Error handler
 app.onError((err, c) => {
-    console.error('Error:', err)
+    console.error('Error details:', {
+        message: err.message,
+        stack: err.stack,
+        url: c.req.url,
+        method: c.req.method,
+        env: {
+            hasSupabaseUrl: !!c.env.SUPABASE_URL,
+            hasSupabaseAnonKey: !!c.env.SUPABASE_ANON_KEY,
+            hasSupabaseServiceKey: !!c.env.SUPABASE_SERVICE_KEY
+        }
+    })
+    
+    // In development, send detailed error info
+    if (c.env.DEV) {
+        return c.json({ 
+            error: err.message,
+            stack: err.stack,
+            env: {
+                hasSupabaseUrl: !!c.env.SUPABASE_URL,
+                hasSupabaseAnonKey: !!c.env.SUPABASE_ANON_KEY,
+                hasSupabaseServiceKey: !!c.env.SUPABASE_SERVICE_KEY
+            }
+        }, 500)
+    }
+    
     return c.json({ error: 'Internal server error' }, 500)
 })
 
