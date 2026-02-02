@@ -13,12 +13,21 @@ class ApiClient {
     ): Promise<T> {
         const url = `${this.baseUrl}${endpoint}`
 
+        // Get token from localStorage for authenticated endpoints
+        const token = localStorage.getItem('token')
+        const headers: HeadersInit = {
+            'Content-Type': 'application/json',
+            ...options?.headers,
+        }
+
+        // Add Authorization header for protected endpoints (except auth endpoints)
+        if (token && !endpoint.startsWith('/api/auth') && !endpoint.startsWith('/api/customer-auth')) {
+            (headers as Record<string, string>)['Authorization'] = `Bearer ${token}`
+        }
+
         const response = await fetch(url, {
             ...options,
-            headers: {
-                'Content-Type': 'application/json',
-                ...options?.headers,
-            },
+            headers,
         })
 
         if (!response.ok) {
@@ -66,6 +75,13 @@ class ApiClient {
     }
 
     // Customer Authentication
+    async checkCustomerPhone(phone: string) {
+        return this.request<any>('/api/customer-auth/check-phone', {
+            method: 'POST',
+            body: JSON.stringify({ phone }),
+        })
+    }
+
     async customerLogin(phone: string) {
         return this.request<any>('/api/customer-auth/login', {
             method: 'POST',

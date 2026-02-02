@@ -1,6 +1,5 @@
 import { createContext, useContext, useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 
 interface User {
@@ -39,7 +38,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [user, setUser] = useState<User | null>(null)
   const [token, setToken] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
-  const navigate = useNavigate()
 
   useEffect(() => {
     const initAuth = () => {
@@ -97,7 +95,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       setToken(null)
       setUser(null)
       toast.success('Logged out successfully')
-      navigate('/admin/login')
+      // Note: Navigation will be handled by the component that calls logout
     }
   }
 

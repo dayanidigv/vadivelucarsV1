@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { Link, useLocation } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { Home, FileText, Users, Package, BarChart3, Menu, X, Settings, LogOut, User } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
 
@@ -14,6 +14,7 @@ const navigation = [
 
 export function AdminLayout({ children }: { children: React.ReactNode }) {
     const location = useLocation()
+    const navigate = useNavigate()
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
     const [isUserMenuOpen, setIsUserMenuOpen] = useState(false)
     const { user, logout } = useAuth()
@@ -88,9 +89,10 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
                                         <div className="text-xs text-gray-500">{user?.email}</div>
                                     </div>
                                     <button
-                                        onClick={() => {
-                                            logout()
+                                        onClick={async () => {
+                                            await logout()
                                             setIsUserMenuOpen(false)
+                                            navigate('/admin/login')
                                         }}
                                         className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
                                     >

@@ -8,6 +8,53 @@ const customerAuth = new Hono<{ Bindings: Env }>()
 // JWT Secret - In production, use environment variable
 const JWT_SECRET = 'vadivelu-cars-customer-secret-key'
 
+// Public API to check phone number availability
+customerAuth.post('/check-phone', async (c) => {
+  try {
+    const { phone } = await c.req.json()
+    const supabase = getSupabaseClient(c.env)
+
+    if (!phone) {
+      return c.json({ success: false, message: 'Phone number is required' }, 400)
+    }
+
+    // Check if customer exists with this phone number
+    const { data: customer, error } = await supabase
+      .from('customers')
+      .select('id, name, phone, email')
+      .eq('phone', phone)
+      .single()
+
+    if (error && error.code !== 'PGRST116') { // PGRST116 is "not found" error
+      return c.json({ success: false, message: 'Database error' }, 500)
+    }
+
+    if (!customer) {
+      return c.json({
+        success: false,
+        message: 'Phone number not found',
+        available: false
+      }, 404)
+    }
+
+    return c.json({
+      success: true,
+      message: 'Phone number found',
+      available: true,
+      customer: {
+        id: customer.id,
+        name: customer.name,
+        phone: customer.phone,
+        email: customer.email
+      }
+    })
+
+  } catch (error) {
+    console.error('Check phone error:', error)
+    return c.json({ success: false, message: 'Internal server error' }, 500)
+  }
+})
+
 // Customer Login endpoint (phone-based)
 customerAuth.post('/login', async (c) => {
   try {
