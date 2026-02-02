@@ -3,6 +3,7 @@ import { cors } from 'hono/cors'
 import { logger } from 'hono/logger'
 import router from './router'
 import { Env } from './lib/supabase'
+import { authMiddleware } from './middleware/auth'
 
 type Bindings = Env
 
@@ -15,6 +16,16 @@ app.use('*', cors({
     allowHeaders: ['Content-Type', 'Authorization']
 }))
 app.use('*', logger())
+
+// Apply authentication middleware to all /api routes except auth endpoints
+app.use('/api/*', async (c, next) => {
+    // Skip auth middleware for auth endpoints
+    if (c.req.path.startsWith('/api/auth') || c.req.path.startsWith('/api/customer-auth')) {
+        await next()
+        return
+    }
+    await authMiddleware(c, next)
+})
 
 // Routes
 app.get('/', (c) => {
