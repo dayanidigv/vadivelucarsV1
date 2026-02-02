@@ -15,6 +15,8 @@ auth.post('/login', async (c) => {
     const { username, password } = await c.req.json()
     const supabase = getSupabaseClient(c.env)
 
+    console.log('Login attempt:', { username, hasPassword: !!password })
+
     if (!username || !password) {
       return c.json({ success: false, message: 'Username and password are required' }, 400)
     }
@@ -26,7 +28,10 @@ auth.post('/login', async (c) => {
       .or(`username.eq.${username},email.eq.${username}`)
       .single()
 
+    console.log('User query result:', { error: error?.message, userFound: !!user })
+
     if (error || !user) {
+      console.log('User not found or error:', error)
       return c.json({ success: false, message: 'Invalid credentials' }, 401)
     }
 
@@ -45,6 +50,8 @@ auth.post('/login', async (c) => {
 
     // Verify password
     const isValidPassword = await compare(password, user.password_hash)
+    console.log('Password verification:', { isValid: isValidPassword })
+
     if (!isValidPassword) {
       // Increment login attempts
       const attempts = (user.login_attempts || 0) + 1

@@ -45,14 +45,40 @@ app.get('/health', (c) => {
         isDev: !!c.env.DEV
     }
 
-    // Only require Supabase credentials for health, not DEV flag
-    const essentialEnvSet = envStatus.hasSupabaseUrl && envStatus.hasSupabaseAnonKey && envStatus.hasSupabaseServiceKey
+    const allEnvSet = envStatus.hasSupabaseUrl && envStatus.hasSupabaseAnonKey && envStatus.hasSupabaseServiceKey
 
     return c.json({
-        status: essentialEnvSet ? 'healthy' : 'unhealthy',
+        status: allEnvSet ? 'healthy' : 'unhealthy',
         timestamp: new Date().toISOString(),
         environment: envStatus
-    }, essentialEnvSet ? 200 : 503)
+    }, allEnvSet ? 200 : 503)
+})
+
+// Database test endpoint
+app.get('/test-db', async (c) => {
+    try {
+        const { getSupabaseClient } = await import('./lib/supabase')
+        const supabase = getSupabaseClient(c.env)
+        
+        // Test basic connection
+        const { data, error } = await supabase
+            .from('users')
+            .select('count')
+            .limit(1)
+        
+        return c.json({
+            success: !error,
+            error: error?.message,
+            hasUsers: !!data,
+            timestamp: new Date().toISOString()
+        })
+    } catch (err) {
+        return c.json({
+            success: false,
+            error: err instanceof Error ? err.message : 'Unknown error',
+            timestamp: new Date().toISOString()
+        }, 500)
+    }
 })
 
 app.route('/api', router)
