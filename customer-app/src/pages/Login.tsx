@@ -11,7 +11,7 @@ export default function Login() {
   const [loading, setLoading] = useState(false)
   const [step, setStep] = useState<'phone' | 'vehicle'>('phone')
   const [customerData, setCustomerData] = useState<any>(null)
-  
+
   const navigate = useNavigate()
   const { login } = useAuth()
 
@@ -103,7 +103,7 @@ export default function Login() {
                     Welcome back, {customerData?.name}! Please enter your vehicle number to continue.
                   </p>
                 </div>
-                
+
                 <div>
                   <label htmlFor="vehicle" className="block text-sm font-medium text-gray-700 mb-2">
                     Vehicle Number
@@ -153,14 +153,14 @@ export default function Login() {
         </div>
 
         {/* Footer */}
-        <div className="text-center mt-8">
+        {/* <div className="text-center mt-8">
           <p className="text-sm text-gray-600">
             Need help? Contact us at{' '}
             <a href="tel:+918903626677" className="text-blue-600 hover:underline">
               +91 89036 26677
             </a>
           </p>
-        </div>
+        </div> */}
       </div>
     </div>
   )
