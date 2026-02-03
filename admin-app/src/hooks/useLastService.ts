@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react'
 import { api } from '@/lib/api'
+import type { Invoice, InvoiceItem } from '@/types'
 
 interface ServiceItem {
-  part_id: string
-  part_name: string
+  part_id?: string
+  description: string
   quantity: number
   unit_price: number
-  total: number
+  amount: number
+  item_type: 'part' | 'labor'
 }
 
 interface LastService {
@@ -46,7 +48,7 @@ export function useLastService(customerId?: string, vehicleId?: string) {
 
         if (customerInvoices.length > 0) {
           // Sort by date and get the most recent
-          const sorted = customerInvoices.sort((a: any, b: any) =>
+          const sorted = customerInvoices.sort((a: Invoice, b: Invoice) =>
             new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
           )
 
@@ -55,11 +57,18 @@ export function useLastService(customerId?: string, vehicleId?: string) {
             id: latestInvoice.id,
             customer_id: latestInvoice.customer_id,
             vehicle_id: latestInvoice.vehicle_id,
-            items: latestInvoice.items || [],
+            items: (latestInvoice.items || []).map((item: InvoiceItem) => ({
+              part_id: item.part_id,
+              description: item.description,
+              quantity: Number(item.quantity),
+              unit_price: Number(item.unit_price),
+              amount: Number(item.amount),
+              item_type: item.item_type || 'part'
+            })),
             created_at: latestInvoice.created_at,
             invoice_date: latestInvoice.invoice_date || latestInvoice.created_at,
             mileage: latestInvoice.mileage || 0,
-            total_amount: latestInvoice.grand_total || 0
+            total_amount: Number(latestInvoice.grand_total) || 0
           })
         }
       }
@@ -76,10 +85,11 @@ export function useLastService(customerId?: string, vehicleId?: string) {
     // Return items ready to be added to new invoice
     return lastService.items.map(item => ({
       part_id: item.part_id,
-      name: item.part_name,
+      description: item.description,
       quantity: item.quantity,
-      unit_price: item.unit_price,
-      total: item.total
+      rate: item.unit_price,
+      amount: item.amount,
+      item_type: item.item_type
     }))
   }
 

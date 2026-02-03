@@ -14,35 +14,25 @@ export default function InvoicePrintProtected({ children }: InvoicePrintProtecte
   useEffect(() => {
     const checkAuth = () => {
       // Check customer authentication
-      const customerToken = localStorage.getItem('customerToken')
+      const customerToken = sessionStorage.getItem('customerToken') || localStorage.getItem('customerToken')
       const customer = localStorage.getItem('customer')
-      
+
       if (customerToken && customer) {
-        try {
-          JSON.parse(customer) // Verify it's valid JSON
-          setIsAuthenticated('customer')
-          setLoading(false)
-          return
-        } catch (error) {
-          console.error('Error parsing customer data:', error)
-        }
+        setIsAuthenticated('customer')
+        setLoading(false)
+        return
       }
 
       // Check admin authentication
-      const adminToken = localStorage.getItem('token')
+      const adminToken = sessionStorage.getItem('token') || localStorage.getItem('token')
       const admin = localStorage.getItem('user')
-      
+
       if (adminToken && admin) {
-        try {
-          JSON.parse(admin) // Verify it's valid JSON
-          setIsAuthenticated('admin')
-          setLoading(false)
-          return
-        } catch (error) {
-          console.error('Error parsing admin data:', error)
-        }
+        setIsAuthenticated('admin')
+        setLoading(false)
+        return
       }
-      
+
       setIsAuthenticated(null)
       setLoading(false)
     }

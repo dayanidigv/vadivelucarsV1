@@ -1,15 +1,14 @@
 import { useState, useEffect } from 'react'
 
-interface Part {
-  id: string
-  name: string
-  category: string
-  price: number
+import type { Part } from '@/types'
+
+interface RecentPart extends Part {
+  price: number // Required for recent parts context
   lastUsed: Date
 }
 
 export function useRecentlyUsedParts() {
-  const [recentParts, setRecentParts] = useState<Part[]>([])
+  const [recentParts, setRecentParts] = useState<RecentPart[]>([])
 
   // Load recently used parts from localStorage
   useEffect(() => {
@@ -19,7 +18,7 @@ export function useRecentlyUsedParts() {
         const parts = JSON.parse(stored)
         // Sort by last used date and take top 10
         const sorted = parts
-          .sort((a: Part, b: Part) => new Date(b.lastUsed).getTime() - new Date(a.lastUsed).getTime())
+          .sort((a: RecentPart, b: RecentPart) => new Date(b.lastUsed).getTime() - new Date(a.lastUsed).getTime())
           .slice(0, 10)
         setRecentParts(sorted)
       } catch (error) {
@@ -29,9 +28,10 @@ export function useRecentlyUsedParts() {
   }, [])
 
   // Add part to recently used
-  const addRecentPart = (part: Omit<Part, 'lastUsed'>) => {
-    const newPart: Part = {
+  const addRecentPart = (part: Part) => {
+    const newPart: RecentPart = {
       ...part,
+      price: part.default_rate || part.price || 0,
       lastUsed: new Date()
     }
 
@@ -40,10 +40,10 @@ export function useRecentlyUsedParts() {
       const filtered = prev.filter(p => p.id !== newPart.id)
       // Add to beginning and keep only top 10
       const updated = [newPart, ...filtered].slice(0, 10)
-      
+
       // Save to localStorage
       localStorage.setItem('recentlyUsedParts', JSON.stringify(updated))
-      
+
       return updated
     })
   }

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { useNavigate, useParams } from "react-router-dom"
 import { useForm, useFieldArray } from "react-hook-form"
 import {
@@ -6,6 +6,8 @@ import {
     Calculator, CreditCard, User, Car as CarIcon,
     Package, Wrench, Info, Loader2
 } from "lucide-react"
+import { escape } from "lodash"
+import { auditLogger } from "@/lib/audit"
 import { Button } from "@/components/ui/button"
 import { BackButton } from "@/components/ui/BackButton"
 import { Input } from "@/components/ui/input"
@@ -39,6 +41,8 @@ import { useSearchParts } from "@/hooks/useParts"
 import { useCreateInvoice, useUpdateInvoice, useInvoice } from "@/hooks/useInvoices"
 import { useLastService } from "@/hooks/useLastService"
 import { useRecentlyUsedParts } from "../hooks/useRecentlyUsedParts"
+import { useAuth } from "@/contexts/AuthContext"
+import { encryptData, decryptData } from "@/lib/crypto"
 import { toast } from "sonner"
 import { Combobox } from "@/components/ui/combobox"
 import RecentlyUsedParts from "@/components/invoice/RecentlyUsedParts"
@@ -51,7 +55,7 @@ type InvoiceFormValues = {
     mileage: number
     mechanic_name: string
     payment_method: string
-    payment_status: 'paid' | 'unpaid' | 'partial'
+    payment_status: 'paid' | 'unpaid' | 'partial' | 'pending'
     paid_amount: number
     discount_amount: number
     notes: string
@@ -80,6 +84,7 @@ export default function CreateInvoice() {
     const [selectedCustomer, setSelectedCustomer] = useState<any>(null)
     const [selectedVehicle, setSelectedVehicle] = useState<any>(null)
     const [isClearDialogOpen, setIsClearDialogOpen] = useState(false)
+    const [isSubmitting, setIsSubmitting] = useState(false)
 
     // Queries
     const { data: searchResults, isLoading: isLoadingCustomers } = useSearchCustomers(customerSearch)
@@ -135,7 +140,7 @@ export default function CreateInvoice() {
                 paid_amount: invoice.paid_amount,
                 discount_amount: invoice.discount_amount,
                 notes: invoice.notes,
-                items: invoice.items.map((i: any) => ({
+                items: (invoice.items || []).map((i: any) => ({
                     ...i,
                     quantity: Number(i.quantity),
                     rate: Number(i.rate),
@@ -143,41 +148,89 @@ export default function CreateInvoice() {
                 }))
             })
         } else if (!isEditMode) {
-            const draft = localStorage.getItem('invoice-draft')
-            if (draft) {
-                try {
-                    const parsedDraft = JSON.parse(draft)
-                    if (parsedDraft.selectedCustomer) {
-                        setSelectedCustomer(parsedDraft.selectedCustomer)
+            const loadDraft = async () => {
+                // Try sessionStorage first (new encrypted model)
+                let draft = sessionStorage.getItem('invoice-draft')
+                let isEncrypted = true
+
+                // Fallback to localStorage for migration
+                if (!draft) {
+                    draft = localStorage.getItem('invoice-draft')
+                    isEncrypted = false
+                }
+
+                if (draft) {
+                    try {
+                        let finalDraft = draft
+                        if (isEncrypted) {
+                            const decrypted = await decryptData(draft)
+                            if (!decrypted) throw new Error("Decryption failed")
+                            finalDraft = decrypted
+                        }
+
+                        const parsedDraft = JSON.parse(finalDraft)
+                        if (parsedDraft.selectedCustomer) {
+                            setSelectedCustomer(parsedDraft.selectedCustomer)
+                        }
+                        if (parsedDraft.selectedVehicle) {
+                            setSelectedVehicle(parsedDraft.selectedVehicle)
+                        }
+                        if (parsedDraft.formValues) {
+                            reset(parsedDraft.formValues)
+                            toast.info("Draft restored", { duration: 2000 })
+                        }
+
+                        // Migration cleanup: if it was in localStorage, move it to sessionStorage (encrypted) next save
+                        if (!isEncrypted) {
+                            localStorage.removeItem('invoice-draft')
+                        }
+                    } catch (e) {
+                        console.error("Failed to parse or decrypt draft", e)
+                        localStorage.removeItem('invoice-draft')
+                        sessionStorage.removeItem('invoice-draft')
                     }
-                    if (parsedDraft.selectedVehicle) {
-                        setSelectedVehicle(parsedDraft.selectedVehicle)
-                    }
-                    if (parsedDraft.formValues) {
-                        reset(parsedDraft.formValues)
-                        toast.info("Draft restored", { duration: 2000 })
-                    }
-                } catch (e) {
-                    console.error("Failed to parse draft", e)
                 }
             }
+            loadDraft()
         }
     }, [isEditMode, existingInvoice, reset])
 
-    // Auto-save draft
+    // Auto-save draft (Encrypted & PII stripped)
+    const { isAuthenticated, user } = useAuth()
     const formValues = watch()
     useEffect(() => {
-        if (!isEditMode && selectedCustomer) {
-            const draftData = {
-                formValues,
-                selectedCustomer,
-                selectedVehicle
+        const saveDraft = async () => {
+            if (!isEditMode && selectedCustomer && isAuthenticated) {
+                const draftData = {
+                    formValues,
+                    selectedCustomer: {
+                        id: selectedCustomer.id,
+                        name: selectedCustomer.name,
+                        // Strip PII (phone, email, address)
+                    },
+                    selectedVehicle: selectedVehicle ? {
+                        id: selectedVehicle.id,
+                        vehicle_number: selectedVehicle.vehicle_number
+                        // Strip other vehicle details if needed
+                    } : null,
+                    timestamp: Date.now()
+                }
+
+                try {
+                    const encrypted = await encryptData(JSON.stringify(draftData))
+                    sessionStorage.setItem('invoice-draft', encrypted)
+                    // Also clear old localStorage draft if it somehow exists
+                    localStorage.removeItem('invoice-draft')
+                } catch (e) {
+                    console.error("Failed to encrypt and save draft", e)
+                }
             }
-            localStorage.setItem('invoice-draft', JSON.stringify(draftData))
         }
-    }, [formValues, selectedCustomer, selectedVehicle, isEditMode])
+        saveDraft()
+    }, [formValues, selectedCustomer, selectedVehicle, isEditMode, isAuthenticated])
 
     const handleClearConfirm = () => {
+        sessionStorage.removeItem('invoice-draft')
         localStorage.removeItem('invoice-draft')
         reset({
             invoice_date: new Date().toISOString().split('T')[0],
@@ -211,17 +264,25 @@ export default function CreateInvoice() {
     const paymentStatus = watch("payment_status")
 
     // Calculations
-    const partsTotal = items
-        .filter((i: any) => i.item_type === 'part')
-        .reduce((sum: number, i: any) => sum + (Number(i.quantity) * Number(i.rate)), 0)
+    const partsTotal = useMemo(() =>
+        items
+            .filter((i: any) => i.item_type === 'part')
+            .reduce((sum: number, i: any) => sum + (Number(i.quantity) * Number(i.rate)), 0),
+        [items]
+    )
 
-    const laborTotal = items
-        .filter((i: any) => i.item_type === 'labor')
-        .reduce((sum: number, i: any) => sum + (Number(i.quantity) * Number(i.rate)), 0)
+    const laborTotal = useMemo(() =>
+        items
+            .filter((i: any) => i.item_type === 'labor')
+            .reduce((sum: number, i: any) => sum + (Number(i.quantity) * Number(i.rate)), 0),
+        [items]
+    )
 
-    const subtotal = partsTotal + laborTotal
-    const grandTotal = subtotal - Number(discount)
-    const balance = grandTotal - Number(paid)
+    const subtotal = useMemo(() => partsTotal + laborTotal, [partsTotal, laborTotal])
+
+    const grandTotal = useMemo(() => subtotal - Number(discount), [subtotal, discount])
+
+    const balance = useMemo(() => grandTotal - Number(paid), [grandTotal, paid])
 
     // Auto-update paid amount based on status
     useEffect(() => {
@@ -232,7 +293,9 @@ export default function CreateInvoice() {
         }
     }, [paymentStatus, grandTotal, setValue])
 
-    const onSubmit = (data: InvoiceFormValues) => {
+    const onSubmit = async (data: InvoiceFormValues) => {
+        if (isSubmitting) return
+
         if (!data.customer_id || !data.vehicle_id) {
             toast.error("Please select a customer and vehicle")
             return
@@ -243,37 +306,64 @@ export default function CreateInvoice() {
             return
         }
 
-        const formattedData = {
-            ...data,
-            items: data.items.map(i => ({
-                ...i,
-                quantity: Number(i.quantity),
-                rate: Number(i.rate),
-                amount: Number(i.quantity) * Number(i.rate)
-            }))
-        }
+        setIsSubmitting(true)
 
-        if (isEditMode) {
-            updateInvoice.mutate({ id: id as string, data: formattedData }, {
-                onSuccess: () => {
-                    toast.success("Invoice updated successfully")
-                    navigate("/invoices")
-                },
-                onError: (error: any) => {
-                    toast.error(error.message || "Failed to update invoice")
-                }
-            })
-        } else {
-            createInvoice.mutate(formattedData, {
-                onSuccess: () => {
-                    localStorage.removeItem('invoice-draft')
-                    toast.success("Invoice created successfully")
-                    navigate("/invoices")
-                },
-                onError: (error: any) => {
-                    toast.error(error.message || "Failed to create invoice")
-                }
-            })
+        try {
+            const formattedData = {
+                ...data,
+                idempotencyKey: crypto.randomUUID(),
+                items: data.items.map(i => ({
+                    ...i,
+                    quantity: Number(i.quantity),
+                    rate: Number(i.rate),
+                    unit_price: Number(i.rate),
+                    amount: Number(i.quantity) * Number(i.rate)
+                }))
+            }
+
+            let response: any
+            if (isEditMode) {
+                response = await updateInvoice.mutateAsync({ id: id as string, data: formattedData })
+
+                auditLogger.log({
+                    action: 'UPDATE_INVOICE',
+                    resource: 'invoice',
+                    resourceId: id,
+                    performedBy: user?.username || 'unknown',
+                    severity: 'medium',
+                    changes: {
+                        customer_id: data.customer_id,
+                        total_amount: formattedData.items.reduce((sum, item) => sum + (item.amount || 0), 0)
+                    }
+                })
+
+                toast.success("Invoice updated successfully")
+                navigate("/invoices")
+            } else {
+                response = await createInvoice.mutateAsync(formattedData)
+                sessionStorage.removeItem('invoice-draft')
+                localStorage.removeItem('invoice-draft')
+
+                auditLogger.log({
+                    action: 'CREATE_INVOICE',
+                    resource: 'invoice',
+                    resourceId: response?.data?.id,
+                    performedBy: user?.username || 'unknown',
+                    severity: 'medium',
+                    changes: {
+                        customer_id: data.customer_id,
+                        total_amount: formattedData.items.reduce((sum, item) => sum + (item.amount || 0), 0)
+                    }
+                })
+
+                toast.success("Invoice created successfully")
+                navigate("/invoices")
+            }
+        } catch (error: any) {
+            console.error("Submission failed:", error)
+            toast.error(error.message || `Failed to ${isEditMode ? 'update' : 'create'} invoice`)
+        } finally {
+            setIsSubmitting(false)
         }
     }
 
@@ -334,10 +424,10 @@ export default function CreateInvoice() {
                     )}
                     <Button
                         onClick={handleSubmit(onSubmit)}
-                        disabled={createInvoice.isPending || updateInvoice.isPending}
+                        disabled={isSubmitting || createInvoice.isPending || updateInvoice.isPending}
                         className="flex-1 sm:flex-none bg-blue-600 hover:bg-blue-700"
                     >
-                        {createInvoice.isPending || updateInvoice.isPending ? (
+                        {isSubmitting || createInvoice.isPending || updateInvoice.isPending ? (
                             <>
                                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                                 Saving...
@@ -353,7 +443,7 @@ export default function CreateInvoice() {
             </div>
 
             {/* Draft Indicator */}
-            {!isEditMode && localStorage.getItem('invoice-draft') && (
+            {!isEditMode && sessionStorage.getItem('invoice-draft') && (
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                     <div className="flex items-start gap-3">
                         <Info className="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" />
@@ -393,7 +483,7 @@ export default function CreateInvoice() {
                                     searchPlaceholder="Type to search..."
                                     onSearch={setCustomerSearch}
                                     value={watch("customer_id")}
-                                    selectedLabel={selectedCustomer?.name}
+                                    selectedLabel={escape(selectedCustomer?.name)}
                                     options={(searchResults?.data?.customers || []).map((c: any) => ({
                                         label: `${c.name} - ${c.phone || "No phone"}`,
                                         value: c.id
@@ -429,9 +519,9 @@ export default function CreateInvoice() {
                                         </div>
                                         <div className="text-xs text-gray-600 space-y-1 pt-2 border-t border-gray-200">
                                             <p>📱 {selectedCustomer.phone || "No phone"}</p>
-                                            {selectedCustomer.email && <p>📧 {selectedCustomer.email}</p>}
+                                            {selectedCustomer.email && <p>📧 {escape(selectedCustomer.email)}</p>}
                                             {selectedCustomer.address && (
-                                                <p className="line-clamp-2">📍 {selectedCustomer.address}</p>
+                                                <p className="line-clamp-2">📍 {escape(selectedCustomer.address)}</p>
                                             )}
                                         </div>
                                     </div>
@@ -469,9 +559,9 @@ export default function CreateInvoice() {
                                             <div className="flex items-start gap-2">
                                                 <CarIcon className="h-4 w-4 text-purple-600 mt-0.5" />
                                                 <div className="flex-1 min-w-0">
-                                                    <p className="font-medium text-sm text-purple-900">{selectedVehicle.make} {selectedVehicle.model}</p>
+                                                    <p className="font-medium text-sm text-purple-900">{escape(selectedVehicle.make)} {escape(selectedVehicle.model)}</p>
                                                     <p className="text-xs text-purple-700 mt-0.5">
-                                                        {selectedVehicle.vehicle_number}
+                                                        {escape(selectedVehicle.vehicle_number)}
                                                     </p>
                                                     {selectedVehicle.current_mileage && (
                                                         <p className="text-xs text-purple-600 mt-1">

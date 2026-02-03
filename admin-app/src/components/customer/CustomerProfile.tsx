@@ -6,14 +6,17 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { toast } from 'sonner'
 import { api } from '@/lib/api'
+import type { Customer } from '@/types'
 
 interface CustomerProfileProps {
   customerId: string
-  onUpdate?: (customer: any) => void
+  onUpdate?: (customer: Customer) => void
+  customer?: Customer
+  readOnly?: boolean
 }
 
-export default function CustomerProfile({ customerId, onUpdate, customer: initialCustomer, readOnly = false }: CustomerProfileProps & { customer?: any, readOnly?: boolean }) {
-  const [customer, setCustomer] = useState<any>(initialCustomer || null)
+export default function CustomerProfile({ customerId, onUpdate, customer: initialCustomer, readOnly = false }: CustomerProfileProps) {
+  const [customer, setCustomer] = useState<Customer | null>(initialCustomer || null)
   const [loading, setLoading] = useState(!initialCustomer)
   const [editing, setEditing] = useState(false)
   const [formData, setFormData] = useState({
@@ -35,7 +38,7 @@ export default function CustomerProfile({ customerId, onUpdate, customer: initia
   const fetchCustomer = async () => {
     try {
       const response = await api.getCustomer(customerId)
-      if (response.success) {
+      if (response.success && response.data) {
         setCustomer(response.data)
         setFormData({
           name: response.data.name || '',
@@ -55,7 +58,7 @@ export default function CustomerProfile({ customerId, onUpdate, customer: initia
   const handleUpdate = async () => {
     try {
       const response = await api.updateCustomer(customerId, formData)
-      if (response.success) {
+      if (response.success && response.data) {
         setCustomer(response.data)
         setEditing(false)
         toast.success('Profile updated successfully')

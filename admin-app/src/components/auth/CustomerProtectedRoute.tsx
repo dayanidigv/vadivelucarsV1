@@ -11,20 +11,26 @@ export default function CustomerProtectedRoute({ children }: CustomerProtectedRo
   const location = useLocation()
 
   useEffect(() => {
-    const checkAuth = () => {
-      const token = localStorage.getItem('customerToken')
+    const checkAuth = async () => {
+      const token = sessionStorage.getItem('customerToken') || localStorage.getItem('customerToken')
       const customer = localStorage.getItem('customer')
-      
+
       if (token && customer) {
         try {
-          JSON.parse(customer) // Verify it's valid JSON
+          // If customer data is encrypted, we'd decrypt it here. 
+          // For now, following the same pattern as admin if needed.
+          // But since Customer auth isn't in AuthContext yet, 
+          // I'll just handle the token move.
+          sessionStorage.setItem('customerToken', token)
+          localStorage.removeItem('customerToken')
+
           setIsAuthenticated(true)
           return
         } catch (error) {
           console.error('Error parsing customer data:', error)
         }
       }
-      
+
       setIsAuthenticated(false)
     }
 

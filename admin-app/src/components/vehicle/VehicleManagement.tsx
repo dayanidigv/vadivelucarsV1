@@ -5,9 +5,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { toast } from 'sonner'
+import { escape } from 'lodash'
 import { Combobox } from '@/components/ui/combobox'
 import { useCarModels } from '@/hooks/useCarModels'
 import PhotoCapture from '@/components/invoice/PhotoCapture'
+import type { CarModel } from '@/types'
 
 interface Vehicle {
   id: string
@@ -45,16 +47,16 @@ export default function VehicleManagement({
   // Extract unique makes
   const uniqueMakes = useMemo(() => {
     if (!carModelsData) return []
-    const makes = carModelsData.map((m: any) => m.make)
-    return Array.from(new Set(makes)).sort() as string[]
+    const makes = carModelsData.map((m: CarModel) => m.make)
+    return Array.from(new Set(makes)).sort()
   }, [carModelsData])
 
   // Filter models based on selected make
   const availableModels = useMemo(() => {
     if (!carModelsData || !formData.make) return []
     return carModelsData
-      .filter((m: any) => m.make === formData.make)
-      .sort((a: any, b: any) => a.model.localeCompare(b.model))
+      .filter((m: CarModel) => m.make === formData.make)
+      .sort((a: CarModel, b: CarModel) => a.model.localeCompare(b.model))
   }, [carModelsData, formData.make])
 
   const handleAddVehicle = () => {
@@ -191,7 +193,7 @@ export default function VehicleManagement({
                   placeholder="Select Model"
                   searchPlaceholder="Search model..."
                   value={formData.model}
-                  options={availableModels.map((model: any) => ({ label: model.model, value: model.model }))}
+                  options={availableModels.map((model: CarModel) => ({ label: model.model, value: model.model }))}
                   onChange={(val) => setFormData(prev => ({ ...prev, model: val }))}
                   disabled={!formData.make}
                 />
@@ -246,7 +248,7 @@ export default function VehicleManagement({
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Car className="w-5 h-5 text-blue-600" />
-                  <CardTitle className="text-lg">{vehicle.vehicle_number}</CardTitle>
+                  <CardTitle className="text-lg">{escape(vehicle.vehicle_number)}</CardTitle>
                 </div>
                 <div className="flex gap-1">
                   <Button
@@ -270,11 +272,11 @@ export default function VehicleManagement({
               <div className="space-y-2">
                 <div className="flex justify-between">
                   <span className="text-sm text-muted-foreground">Make:</span>
-                  <span className="font-medium">{vehicle.make}</span>
+                  <span className="font-medium">{escape(vehicle.make)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-sm text-muted-foreground">Model:</span>
-                  <span className="font-medium">{vehicle.model}</span>
+                  <span className="font-medium">{escape(vehicle.model)}</span>
                 </div>
                 {vehicle.year && (
                   <div className="flex justify-between">

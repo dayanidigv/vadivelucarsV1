@@ -1,41 +1,12 @@
 import { Document, Page, Text, View, StyleSheet, Font } from '@react-pdf/renderer'
+import DOMPurify from 'dompurify'
+import type { Invoice, InvoiceItem } from '@/types'
 
-// TypeScript Interfaces for Type Safety
-interface InvoiceItem {
-    description: string
-    quantity: number
-    rate: number
-    amount: number
-    item_type: 'labor' | 'part'
-    unit?: string
-    category?: string
-}
-
-interface InvoiceCustomer {
-    name: string
-    phone?: string
-    address?: string
-}
-
-interface InvoiceVehicle {
-    vehicle_number: string
-    make: string
-    model: string
-}
-
-interface Invoice {
-    id: string
-    invoice_number: number
-    invoice_date: number
-    created_at: string
-    customer: InvoiceCustomer
-    vehicle: InvoiceVehicle
-    items: InvoiceItem[]
-    mileage: number
-    grand_total: number
-    discount_amount: number
-    mechanic_name?: string
-    notes?: string
+// Security: Helper function to sanitize user input to prevent XSS
+function sanitizeText(text: string | undefined | null): string {
+    if (!text) return ''
+    // Strip all HTML tags - react-pdf doesn't render HTML anyway, but this is a defense-in-depth measure
+    return DOMPurify.sanitize(text, { ALLOWED_TAGS: [] })
 }
 
 // Register custom font - using cleaner path
@@ -344,6 +315,28 @@ const styles = StyleSheet.create({
         textAlign: 'center',
         color: '#14532d',
     },
+    mechanicRow: {
+        flexDirection: 'row',
+        marginTop: 4,
+        gap: 4,
+    },
+    notesBox: {
+        marginTop: 6,
+        padding: 4,
+        borderWidth: 1,
+        borderColor: '#e2e8f0',
+        borderRadius: 2,
+    },
+    notesLabel: {
+        fontSize: 8,
+        fontWeight: 'bold',
+        color: '#64748b',
+        marginBottom: 2,
+    },
+    notesText: {
+        fontSize: 8,
+        color: '#1e293b',
+    },
 })
 
 export default function InvoicePDF({ invoice }: { invoice: Invoice }) {
@@ -372,14 +365,15 @@ export default function InvoicePDF({ invoice }: { invoice: Invoice }) {
         .reduce((sum, i) => sum + Number(i.amount), 0);
 
     const subtotal = partsTotal + laborTotal;
-    const discount = invoice.discount_amount || 0;
+    const discount = Number(invoice.discount_amount) || 0;
     const totalAmount = subtotal - discount;
 
     // Validate against database value (log warning if mismatch)
-    if (Math.abs(totalAmount - invoice.grand_total) > 0.01) {
+    const storedTotal = Number(invoice.grand_total);
+    if (Math.abs(totalAmount - storedTotal) > 0.01) {
         console.warn('Invoice total mismatch:', {
             calculated: totalAmount,
-            stored: invoice.grand_total,
+            stored: storedTotal,
             invoiceId: invoice.id
         });
     }
@@ -435,15 +429,15 @@ export default function InvoicePDF({ invoice }: { invoice: Invoice }) {
                                     <View style={styles.headerRight}>
                                         <View style={styles.customerRow}>
                                             <Text style={styles.customerLabel}>Customer Name :</Text>
-                                            <Text style={styles.customerValue}>{invoice.customer?.name}</Text>
+                                            <Text style={styles.customerValue}>{sanitizeText(invoice.customer?.name)}</Text>
                                         </View>
                                         <View style={styles.customerRow}>
                                             <Text style={styles.customerLabel}>Vehicle No. :</Text>
-                                            <Text style={styles.customerValue}>{invoice.vehicle?.vehicle_number}</Text>
+                                            <Text style={styles.customerValue}>{sanitizeText(invoice.vehicle?.vehicle_number)}</Text>
                                         </View>
                                         <View style={styles.customerRow}>
                                             <Text style={styles.customerLabel}>Model :</Text>
-                                            <Text style={styles.customerValue}>{invoice.vehicle?.make} {invoice.vehicle?.model}</Text>
+                                            <Text style={styles.customerValue}>{sanitizeText(invoice.vehicle?.make)} {sanitizeText(invoice.vehicle?.model)}</Text>
                                         </View>
                                         <View style={styles.customerRow}>
                                             <Text style={styles.customerLabel}>Mileage (Km.) :</Text>
@@ -453,7 +447,7 @@ export default function InvoicePDF({ invoice }: { invoice: Invoice }) {
                                             <View style={{ flexDirection: 'row', flex: 1 }}>
                                                 <Text style={styles.customerLabel}>Date :</Text>
                                                 <Text style={{ ...styles.customerValue, flex: 0, width: 60 }}>
-                                                    {new Date(invoice.invoice_date).toLocaleDateString("en-GB")}
+                                                    {invoice.invoice_date ? new Date(invoice.invoice_date).toLocaleDateString("en-GB") : ''}
                                                 </Text>
                                             </View>
                                             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
@@ -472,7 +466,7 @@ export default function InvoicePDF({ invoice }: { invoice: Invoice }) {
                                             Invoice: {invoice.invoice_number} (Continued)
                                         </Text>
                                         <Text style={{ fontSize: 8, color: '#666' }}>
-                                            {invoice.customer?.name} • {invoice.vehicle?.vehicle_number}
+                                            {sanitizeText(invoice.customer?.name)} • {sanitizeText(invoice.vehicle?.vehicle_number)}
                                         </Text>
                                     </View>
                                     <Text style={styles.pageNumber}>Page {pageIndex + 1} of {totalPages}</Text>
@@ -498,9 +492,9 @@ export default function InvoicePDF({ invoice }: { invoice: Invoice }) {
                                     return (
                                         <View key={index} style={styles.tableRow}>
                                             <View style={styles.colSl}><Text style={styles.cellText}>{globalIndex + 1}</Text></View>
-                                            <View style={styles.colDesc}><Text style={{ ...styles.cellText, textAlign: 'left', paddingLeft: 4 }}>{item.description}</Text></View>
+                                            <View style={styles.colDesc}><Text style={{ ...styles.cellText, textAlign: 'left', paddingLeft: 4 }}>{sanitizeText(item.description)}</Text></View>
                                             <View style={styles.colQty}><Text style={styles.cellText}>{item.quantity}</Text></View>
-                                            <View style={styles.colRate}><Text style={styles.cellTextRight}>{Number(item.rate).toFixed(2)}</Text></View>
+                                            <View style={styles.colRate}><Text style={styles.cellTextRight}>{Number(item.rate || item.unit_price || 0).toFixed(2)}</Text></View>
                                             <View style={styles.colAmount}>
                                                 <Text style={styles.cellTextRight}>{!isLabor ? Number(item.amount).toFixed(2) : ''}</Text>
                                             </View>
@@ -569,6 +563,20 @@ export default function InvoicePDF({ invoice }: { invoice: Invoice }) {
                                                 Rupees: {numberToWordsWithPaise(totalAmount)}
                                             </Text>
                                             <Text style={styles.noteText}>*Materials once sold cannot be Taken Back</Text>
+
+                                            {/* {invoice.mechanic_name && (
+                                                <View style={styles.mechanicRow}>
+                                                    <Text style={{ fontSize: 8, fontWeight: 'bold' }}>Mechanic:</Text>
+                                                    <Text style={{ fontSize: 8 }}>{sanitizeText(invoice.mechanic_name)}</Text>
+                                                </View>
+                                            )} */}
+
+                                            {invoice.notes && (
+                                                <View style={styles.notesBox}>
+                                                    <Text style={styles.notesLabel}>Notes:</Text>
+                                                    <Text style={styles.notesText}>{sanitizeText(invoice.notes)}</Text>
+                                                </View>
+                                            )}
                                         </View>
                                         <View style={styles.footerRight}>
                                             <Text style={{ fontSize: 9, fontWeight: 'bold', marginTop: 10 }}>For VADIVELU CARS</Text>

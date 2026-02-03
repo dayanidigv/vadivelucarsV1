@@ -67,6 +67,7 @@ router.get('/customers/search', customerController.search)
 router.get('/customers/:id', customerController.get)
 router.post('/customers', customerController.create)
 router.put('/customers/:id', customerController.update)
+router.delete('/customers/:id', customerController.remove)
 
 // Parts
 router.get('/parts', partsController.list)

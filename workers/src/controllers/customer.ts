@@ -201,3 +201,61 @@ export async function update(c: Context) {
         message: 'Customer updated successfully'
     })
 }
+
+export async function remove(c: Context) {
+    const id = c.req.param('id')
+    const supabase = getSupabaseClient(c.env)
+
+    try {
+        // 1. Get all invoices for this customer to delete their items
+        const { data: invoices } = await supabase
+            .from('invoices')
+            .select('id')
+            .eq('customer_id', id)
+
+        if (invoices && invoices.length > 0) {
+            const invoiceIds = invoices.map(i => i.id)
+            // 2. Delete invoice items first
+            await supabase
+                .from('invoice_items')
+                .delete()
+                .in('invoice_id', invoiceIds)
+
+            // 3. Delete invoices
+            await supabase
+                .from('invoices')
+                .delete()
+                .in('id', invoiceIds)
+        }
+
+        // 4. Delete vehicles
+        await supabase
+            .from('vehicles')
+            .delete()
+            .eq('customer_id', id)
+
+        // 5. Delete customer feedback if table exists
+        await supabase
+            .from('customer_feedback')
+            .delete()
+            .eq('customer_id', id)
+
+        // 6. Finally delete the customer
+        const { error: customerError } = await supabase
+            .from('customers')
+            .delete()
+            .eq('id', id)
+
+        if (customerError) {
+            return c.json({ error: customerError.message }, 400)
+        }
+
+        return c.json({
+            success: true,
+            message: 'Customer and all related records deleted successfully'
+        })
+    } catch (error: any) {
+        console.error('Delete customer error:', error)
+        return c.json({ error: error.message || 'Failed to delete customer' }, 500)
+    }
+}

@@ -52,6 +52,9 @@ export default function AdminLogin() {
     if (error) setError(null)
   }
 
+  const [oauthState] = useState(() => crypto.randomUUID())
+  const [nonce] = useState(() => crypto.randomUUID())
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8">
@@ -147,7 +150,13 @@ export default function AdminLogin() {
 
         <div className="flex justify-center">
           <GoogleLogin
-            onSuccess={async (credentialResponse) => {
+            onSuccess={async (credentialResponse: any) => {
+              // Verify OAuth state to prevent CSRF
+              if (credentialResponse.state && credentialResponse.state !== oauthState) {
+                toast.error('Invalid OAuth state detected')
+                return
+              }
+
               try {
                 setLoading(true)
                 const data = await api.googleLogin(credentialResponse.credential!)
@@ -167,6 +176,8 @@ export default function AdminLogin() {
             onError={() => {
               toast.error('Google Login Failed')
             }}
+            state={oauthState}
+            nonce={nonce}
             useOneTap
           />
         </div>

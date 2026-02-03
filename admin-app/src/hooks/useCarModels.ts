@@ -1,19 +1,13 @@
 import { useQuery } from "@tanstack/react-query"
 import { api } from "../lib/api"
-
-export interface CarModel {
-    id: string
-    make: string
-    model: string
-    type: string
-}
+import type { CarModel } from "@/types"
 
 export function useCarModels() {
-    return useQuery({
+    return useQuery<CarModel[]>({
         queryKey: ["car-models"],
         queryFn: async () => {
             const res = await api.getCarModels()
-            return res.data
+            return res.data || []
         }
     })
 }

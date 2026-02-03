@@ -9,10 +9,12 @@ import {
 import { useParts, useDeletePart } from "@/hooks/useParts"
 import { Loader2, Trash2, FileText, AlertTriangle, Package, Search, Plus, Wrench, Layers } from "lucide-react"
 import { CreatePartDialog } from "./CreatePartDialog"
+import { escape } from "lodash"
 import { Badge } from "@/components/ui/badge"
 import { useState } from "react"
 import { PaginationControls } from "@/components/ui/pagination-controls"
 import { Button } from "@/components/ui/button"
+import type { Part } from "@/types"
 import {
     Dialog,
     DialogContent,
@@ -29,7 +31,7 @@ export function PartList() {
     const { data, isLoading } = useParts(undefined, page)
     const deletePart = useDeletePart()
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
-    const [partToDelete, setPartToDelete] = useState<any>(null)
+    const [partToDelete, setPartToDelete] = useState<Part | null>(null)
 
     if (isLoading) {
         return (
@@ -44,12 +46,12 @@ export function PartList() {
     const pagination = data?.pagination || { page: 1, limit: 20, total: 0, pages: 1 }
 
     // Client-side filtering for now
-    const filteredParts = parts.filter((part: any) =>
+    const filteredParts = parts.filter((part: Part) =>
         part.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         part.category?.toLowerCase().includes(searchQuery.toLowerCase())
     )
 
-    const confirmDelete = (part: any) => {
+    const confirmDelete = (part: Part) => {
         setPartToDelete(part)
         setIsDeleteDialogOpen(true)
     }
@@ -100,7 +102,7 @@ export function PartList() {
                     <div className="flex items-center justify-between">
                         <div>
                             <p className="text-sm text-gray-500">Active Parts</p>
-                            <p className="text-2xl font-bold text-gray-900 mt-1">{parts.filter((p: any) => p.is_active).length}</p>
+                            <p className="text-2xl font-bold text-gray-900 mt-1">{parts.filter((p: Part) => p.is_active).length}</p>
                         </div>
                         <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
                             <Layers className="h-6 w-6 text-purple-600" />
@@ -164,14 +166,14 @@ export function PartList() {
                                     </TableCell>
                                 </TableRow>
                             ) : (
-                                filteredParts.map((part: any) => (
+                                filteredParts.map((part: Part) => (
                                     <TableRow key={part.id} className="hover:bg-gray-50 transition-colors">
                                         <TableCell className="font-medium">
                                             <div className="flex items-center gap-3">
                                                 <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 bg-gray-100">
                                                     {part.category === 'Labor' ? <Wrench className="h-4 w-4 text-gray-500" /> : <Package className="h-4 w-4 text-gray-500" />}
                                                 </div>
-                                                {part.name}
+                                                {escape(part.name)}
                                             </div>
                                         </TableCell>
                                         <TableCell>

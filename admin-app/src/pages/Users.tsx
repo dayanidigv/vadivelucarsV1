@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react'
 import { toast } from 'sonner'
 import { api } from '@/lib/api'
+import { auditLogger } from '@/lib/audit'
+import { useAuth } from '@/contexts/AuthContext'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -8,24 +10,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Search, Plus, Edit, Trash2, Key, ToggleLeft, ToggleRight, Users as UsersIcon } from 'lucide-react'
+import { Search, Plus, Edit, Trash2, Key, ToggleLeft, ToggleRight, Users as UsersIcon, AlertTriangle } from 'lucide-react'
 import { BackButton } from '@/components/ui/BackButton'
 
-interface User {
-  id: string
-  username: string
-  email: string
-  name: string
-  phone?: string
-  role: 'admin' | 'manager' | 'staff' | 'technician'
-  permissions: Record<string, any>
-  is_active: boolean
-  last_login?: string
-  login_attempts: number
-  locked_until?: string
-  created_at: string
-  updated_at?: string
-}
+import type { User } from '@/types'
 
 interface UserFormData {
   username: string
@@ -49,6 +37,8 @@ export default function Users() {
   const [editingUser, setEditingUser] = useState<User | null>(null)
   const [isDeleteOpen, setIsDeleteOpen] = useState(false)
   const [userToDelete, setUserToDelete] = useState<User | null>(null)
+  const [deleteConfirmName, setDeleteConfirmName] = useState('')
+  const { user: currentUser } = useAuth()
 
   const [isStatusOpen, setIsStatusOpen] = useState(false)
   const [userToToggle, setUserToToggle] = useState<User | null>(null)
@@ -72,9 +62,11 @@ export default function Users() {
     try {
       setLoading(true)
       const response = await api.getUsers(page, 20)
-      if (response.success) {
+      if (response.success && response.data) {
         setUsers(response.data)
-        setTotalPages(response.pagination.pages)
+        if (response.pagination) {
+          setTotalPages(response.pagination.pages)
+        }
       }
     } catch (error) {
       toast.error('Failed to fetch users')
@@ -87,7 +79,7 @@ export default function Users() {
     try {
       setLoading(true)
       const response = await api.searchUsers(search)
-      if (response.success) {
+      if (response.success && response.data) {
         setUsers(response.data)
       }
     } catch (error) {
@@ -151,16 +143,40 @@ export default function Users() {
 
   const confirmDelete = (user: User) => {
     setUserToDelete(user)
+    setDeleteConfirmName('')
     setIsDeleteOpen(true)
   }
 
   const handleDelete = async () => {
     if (!userToDelete) return
 
+    // Extra protection for admin users
+    if (userToDelete.role === 'admin') {
+      if (deleteConfirmName !== userToDelete.username) {
+        toast.error('Deletion cancelled - username mismatch')
+        return
+      }
+    }
+
     try {
       const response = await api.deleteUser(userToDelete.id)
       if (response.success) {
         toast.success('User deleted successfully')
+
+        // Log critical action
+        auditLogger.log({
+          action: 'DELETE_USER',
+          resource: 'user',
+          resourceId: userToDelete.id,
+          performedBy: currentUser?.username || 'unknown',
+          severity: 'high',
+          changes: {
+            username: userToDelete.username,
+            role: userToDelete.role,
+            deleted_by: currentUser?.username || 'system_admin'
+          }
+        })
+
         setIsDeleteOpen(false)
         fetchUsers()
       }
@@ -579,12 +595,47 @@ export default function Users() {
           <DialogHeader>
             <DialogTitle>Delete User</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete user "{userToDelete?.username}"? This action cannot be undone.
+              {userToDelete?.role === 'admin' ? (
+                <div className="space-y-3">
+                  <p className="font-bold text-red-600 flex items-center gap-2">
+                    <AlertTriangle className="h-5 w-5" />
+                    CRITICAL ACTION: Deleting an ADMIN user.
+                  </p>
+                  <p>
+                    This will permanently remove administrative access for "{userToDelete?.username}".
+                    This action cannot be undone.
+                  </p>
+                </div>
+              ) : (
+                `Are you sure you want to delete user "${userToDelete?.username}"? This action cannot be undone.`
+              )}
             </DialogDescription>
           </DialogHeader>
+
+          {userToDelete?.role === 'admin' && (
+            <div className="py-4 space-y-2">
+              <Label htmlFor="confirm-name">
+                Type <span className="font-mono font-bold text-red-600">"{userToDelete?.username}"</span> to confirm:
+              </Label>
+              <Input
+                id="confirm-name"
+                value={deleteConfirmName}
+                onChange={(e) => setDeleteConfirmName(e.target.value)}
+                placeholder="Type username here"
+                className="border-red-200 focus:ring-red-500"
+              />
+            </div>
+          )}
+
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsDeleteOpen(false)}>Cancel</Button>
-            <Button variant="destructive" onClick={handleDelete}>Delete</Button>
+            <Button
+              variant="destructive"
+              onClick={handleDelete}
+              disabled={userToDelete?.role === 'admin' && deleteConfirmName !== userToDelete?.username}
+            >
+              Confirm Deletion
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

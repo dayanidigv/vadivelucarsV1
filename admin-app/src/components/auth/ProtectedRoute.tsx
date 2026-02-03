@@ -1,51 +1,51 @@
 import { Navigate, useLocation } from 'react-router-dom'
 import { useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
+import { useAuth } from '@/contexts/AuthContext'
 
 interface ProtectedRouteProps {
   children: ReactNode
 }
 
 export default function ProtectedRoute({ children }: ProtectedRouteProps) {
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null)
+  const { isLoading: authLoading, verifySession } = useAuth()
+  const [isVerifying, setIsVerifying] = useState(false)
+  const [isAuthorized, setIsAuthorized] = useState<boolean | null>(null)
   const location = useLocation()
 
   useEffect(() => {
-    const checkAuth = () => {
-      const token = localStorage.getItem('token')
-      const user = localStorage.getItem('user')
-
-      if (token && user) {
-        try {
-          const userData = JSON.parse(user)
-          // Check if user has admin role
-          if (userData.role && ['admin', 'manager'].includes(userData.role)) {
-            setIsAuthenticated(true)
-            return
-          }
-        } catch (error) {
-          console.error('Error parsing user data:', error)
+    const checkAuth = async () => {
+      setIsVerifying(true)
+      try {
+        const verifiedUser = await verifySession()
+        if (verifiedUser && ['admin', 'manager'].includes(verifiedUser.role)) {
+          setIsAuthorized(true)
+        } else {
+          setIsAuthorized(false)
         }
+      } catch (error) {
+        console.error('Verification error:', error)
+        setIsAuthorized(false)
+      } finally {
+        setIsVerifying(false)
       }
-
-      setIsAuthenticated(false)
     }
 
     checkAuth()
-  }, [])
+  }, [location.pathname, verifySession]) // Re-verify on route change
 
-  if (isAuthenticated === null) {
+  if (authLoading || isVerifying || isAuthorized === null) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-transparent">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Checking authentication...</p>
+          <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto"></div>
+          <p className="mt-4 text-slate-400 font-medium">Verifying access...</p>
         </div>
       </div>
     )
   }
 
-  if (!isAuthenticated) {
+  if (!isAuthorized) {
     return <Navigate to="/login" state={{ from: location }} replace />
   }
 

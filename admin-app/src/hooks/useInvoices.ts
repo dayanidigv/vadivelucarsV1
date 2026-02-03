@@ -1,7 +1,9 @@
-
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '../lib/api'
-import type { CreateInvoiceData } from '../types'
+import { z } from 'zod'
+import { InvoiceSchema } from '../lib/schemas'
+import { toast } from 'sonner'
+import type { CreateInvoiceData } from '@/types'
 
 export function useInvoices(page = 1, limit = 20) {
     return useQuery({
@@ -45,12 +47,22 @@ export function useCreateInvoice() {
     const queryClient = useQueryClient()
 
     return useMutation({
-        mutationFn: (data: CreateInvoiceData) => api.createInvoice(data),
+        mutationFn: (data: CreateInvoiceData) => {
+            const validated = InvoiceSchema.parse(data)
+            return api.createInvoice(validated as CreateInvoiceData)
+        },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['invoices'] })
             // Invalidate parts cache to refresh autosaved parts
             queryClient.invalidateQueries({ queryKey: ['parts'] })
         },
+        onError: (error: Error) => {
+            if (error instanceof z.ZodError) {
+                toast.error(error.issues[0].message)
+            } else {
+                toast.error(error.message || 'Failed to create invoice')
+            }
+        }
     })
 }
 
@@ -58,12 +70,22 @@ export function useUpdateInvoice() {
     const queryClient = useQueryClient()
 
     return useMutation({
-        mutationFn: ({ id, data }: { id: string; data: any }) => api.updateInvoice(id, data),
+        mutationFn: ({ id, data }: { id: string; data: Partial<CreateInvoiceData> }) => {
+            const validated = InvoiceSchema.partial().parse(data)
+            return api.updateInvoice(id, validated as Partial<CreateInvoiceData>)
+        },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['invoices'] })
             // Invalidate parts cache to refresh autosaved parts
             queryClient.invalidateQueries({ queryKey: ['parts'] })
         },
+        onError: (error: Error) => {
+            if (error instanceof z.ZodError) {
+                toast.error(error.issues[0].message)
+            } else {
+                toast.error(error.message || 'Failed to update invoice')
+            }
+        }
     })
 }
 

@@ -7,10 +7,13 @@ import {
     TableRow,
 } from "@/components/ui/table"
 import { useCustomers, useDeleteCustomer } from "@/hooks/useCustomers"
+import { useAuth } from "@/contexts/AuthContext"
 import { Loader2, Trash2, Edit, AlertTriangle, Users, Phone, Mail, MapPin, Car, Search, Plus } from "lucide-react"
 import { CreateCustomerDialog } from "./CreateCustomerDialog"
+import { escape } from "lodash"
 import { useState } from "react"
 import { PaginationControls } from "@/components/ui/pagination-controls"
+import { auditLogger } from "@/lib/audit"
 import { Button } from "@/components/ui/button"
 import {
     Dialog,
@@ -27,6 +30,7 @@ export function CustomerList() {
     const [searchQuery, setSearchQuery] = useState("")
     const { data, isLoading } = useCustomers(page)
     const deleteCustomer = useDeleteCustomer()
+    const { user: currentUser } = useAuth()
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
     const [customerToDelete, setCustomerToDelete] = useState<any>(null)
 
@@ -56,6 +60,16 @@ export function CustomerList() {
     const handleDelete = async () => {
         if (customerToDelete) {
             await deleteCustomer.mutateAsync(customerToDelete.id)
+
+            auditLogger.log({
+                action: 'DELETE_CUSTOMER',
+                resource: 'customer',
+                resourceId: customerToDelete.id,
+                performedBy: currentUser?.username || 'unknown',
+                severity: 'medium',
+                changes: { name: customerToDelete.name }
+            })
+
             setIsDeleteDialogOpen(false)
             setCustomerToDelete(null)
         }
@@ -174,7 +188,7 @@ export function CustomerList() {
                                                     </span>
                                                 </div>
                                                 <div>
-                                                    <p className="font-semibold text-gray-900">{customer.name}</p>
+                                                    <p className="font-semibold text-gray-900">{escape(customer.name)}</p>
                                                     <p className="text-xs text-gray-500">ID: #{customer.id}</p>
                                                 </div>
                                             </div>
@@ -197,7 +211,7 @@ export function CustomerList() {
                                             {customer.address ? (
                                                 <div className="flex items-start gap-2">
                                                     <MapPin className="h-3.5 w-3.5 text-gray-400 mt-0.5 flex-shrink-0" />
-                                                    <span className="text-sm text-gray-600 line-clamp-2">{customer.address}</span>
+                                                    <span className="text-sm text-gray-600 line-clamp-2">{escape(customer.address)}</span>
                                                 </div>
                                             ) : (
                                                 <span className="text-sm text-gray-400">-</span>

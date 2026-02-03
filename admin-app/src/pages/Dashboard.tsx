@@ -1,6 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Users, FileText, IndianRupee, Loader2, TrendingUp, Package, Calendar, ArrowUpRight } from "lucide-react"
 import { useDashboardStats } from "@/hooks/useDashboard"
+import { Link } from "react-router-dom"
 
 export default function Dashboard() {
     const { data: dashboardData, isLoading } = useDashboardStats()
@@ -180,47 +181,53 @@ export default function Dashboard() {
 
             {/* Quick Actions */}
             <div className="grid gap-4 md:grid-cols-3">
-                <Card className="border-0 shadow-sm hover:shadow-md transition-shadow cursor-pointer bg-gradient-to-br from-blue-500 to-blue-600 text-white">
-                    <CardContent className="pt-6">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <p className="text-sm font-medium opacity-90">Create New</p>
-                                <p className="text-2xl font-bold mt-1">Invoice</p>
+                <Link to="/invoices/new">
+                    <Card className="border-0 shadow-sm hover:shadow-md transition-shadow cursor-pointer bg-gradient-to-br from-blue-500 to-blue-600 text-white">
+                        <CardContent className="pt-6">
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <p className="text-sm font-medium opacity-90">Create New</p>
+                                    <p className="text-2xl font-bold mt-1">Invoice</p>
+                                </div>
+                                <div className="w-12 h-12 bg-white/20 rounded-lg flex items-center justify-center">
+                                    <FileText className="h-6 w-6" />
+                                </div>
                             </div>
-                            <div className="w-12 h-12 bg-white/20 rounded-lg flex items-center justify-center">
-                                <FileText className="h-6 w-6" />
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
+                        </CardContent>
+                    </Card>
+                </Link>
 
-                <Card className="border-0 shadow-sm hover:shadow-md transition-shadow cursor-pointer bg-gradient-to-br from-purple-500 to-purple-600 text-white">
-                    <CardContent className="pt-6">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <p className="text-sm font-medium opacity-90">Add New</p>
-                                <p className="text-2xl font-bold mt-1">Customer</p>
+                <Link to="/customers">
+                    <Card className="border-0 shadow-sm hover:shadow-md transition-shadow cursor-pointer bg-gradient-to-br from-purple-500 to-purple-600 text-white">
+                        <CardContent className="pt-6">
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <p className="text-sm font-medium opacity-90">Add New</p>
+                                    <p className="text-2xl font-bold mt-1">Customer</p>
+                                </div>
+                                <div className="w-12 h-12 bg-white/20 rounded-lg flex items-center justify-center">
+                                    <Users className="h-6 w-6" />
+                                </div>
                             </div>
-                            <div className="w-12 h-12 bg-white/20 rounded-lg flex items-center justify-center">
-                                <Users className="h-6 w-6" />
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
+                        </CardContent>
+                    </Card>
+                </Link>
 
-                <Card className="border-0 shadow-sm hover:shadow-md transition-shadow cursor-pointer bg-gradient-to-br from-green-500 to-green-600 text-white">
-                    <CardContent className="pt-6">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <p className="text-sm font-medium opacity-90">Manage</p>
-                                <p className="text-2xl font-bold mt-1">Parts</p>
+                <Link to="/parts">
+                    <Card className="border-0 shadow-sm hover:shadow-md transition-shadow cursor-pointer bg-gradient-to-br from-green-500 to-green-600 text-white">
+                        <CardContent className="pt-6">
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <p className="text-sm font-medium opacity-90">Manage</p>
+                                    <p className="text-2xl font-bold mt-1">Parts</p>
+                                </div>
+                                <div className="w-12 h-12 bg-white/20 rounded-lg flex items-center justify-center">
+                                    <Package className="h-6 w-6" />
+                                </div>
                             </div>
-                            <div className="w-12 h-12 bg-white/20 rounded-lg flex items-center justify-center">
-                                <Package className="h-6 w-6" />
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
+                        </CardContent>
+                    </Card>
+                </Link>
             </div>
         </div>
     )

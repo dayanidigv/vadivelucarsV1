@@ -10,10 +10,10 @@ interface RepeatLastServiceProps {
   onRepeatService: (items: any[]) => void
 }
 
-export default function RepeatLastService({ 
-  customerId, 
-  vehicleId, 
-  onRepeatService 
+export default function RepeatLastService({
+  customerId,
+  vehicleId,
+  onRepeatService
 }: RepeatLastServiceProps) {
   const { lastService, loading, repeatLastService } = useLastService(customerId, vehicleId)
 
@@ -82,7 +82,7 @@ export default function RepeatLastService({
             <div className="flex flex-wrap gap-1">
               {lastService.items.slice(0, 3).map((item, index) => (
                 <Badge key={index} variant="outline" className="text-xs">
-                  {item.part_name} ({item.quantity})
+                  {item.description} ({item.quantity})
                 </Badge>
               ))}
               {lastService.items.length > 3 && (

@@ -1,6 +1,9 @@
-
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '../lib/api'
+import { z } from 'zod'
+import { CustomerSchema } from '../lib/schemas'
+import { toast } from 'sonner'
+import type { CreateCustomerInput } from '@/types'
 
 export function useCustomers(page = 1) {
     return useQuery({
@@ -27,10 +30,20 @@ export function useCreateCustomer() {
     const queryClient = useQueryClient()
 
     return useMutation({
-        mutationFn: (data: any) => api.createCustomer(data),
+        mutationFn: (data: CreateCustomerInput) => {
+            const validated = CustomerSchema.parse(data)
+            return api.createCustomer(validated)
+        },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['customers'] })
         },
+        onError: (error: Error) => {
+            if (error instanceof z.ZodError) {
+                toast.error(error.issues[0].message)
+            } else {
+                toast.error(error.message || 'Failed to create customer')
+            }
+        }
     })
 }
 
@@ -38,10 +51,20 @@ export function useUpdateCustomer() {
     const queryClient = useQueryClient()
 
     return useMutation({
-        mutationFn: ({ id, data }: { id: string; data: any }) => api.updateCustomer(id, data),
+        mutationFn: ({ id, data }: { id: string; data: Partial<CreateCustomerInput> }) => {
+            const validated = CustomerSchema.partial().parse(data)
+            return api.updateCustomer(id, validated)
+        },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['customers'] })
         },
+        onError: (error: Error) => {
+            if (error instanceof z.ZodError) {
+                toast.error(error.issues[0].message)
+            } else {
+                toast.error(error.message || 'Failed to update customer')
+            }
+        }
     })
 }
 

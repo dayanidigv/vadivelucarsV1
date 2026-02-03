@@ -1,6 +1,6 @@
-
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '../lib/api'
+import type { CreatePartInput } from '@/types'
 
 export function useParts(category?: string, page = 1) {
     return useQuery({
@@ -13,7 +13,7 @@ export function useSearchParts(query: string) {
     return useQuery({
         queryKey: ['parts', 'search', query],
         queryFn: () => api.searchParts(query),
-        enabled: query.length > 1,
+        enabled: query.length > 0,
     })
 }
 
@@ -21,7 +21,7 @@ export function useCreatePart() {
     const queryClient = useQueryClient()
 
     return useMutation({
-        mutationFn: (data: any) => api.createPart(data),
+        mutationFn: (data: CreatePartInput) => api.createPart(data),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['parts'] })
         },
@@ -32,7 +32,7 @@ export function useUpdatePart() {
     const queryClient = useQueryClient()
 
     return useMutation({
-        mutationFn: ({ id, data }: { id: string; data: any }) => api.updatePart(id, data),
+        mutationFn: ({ id, data }: { id: string; data: Partial<CreatePartInput> }) => api.updatePart(id, data),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['parts'] })
         },

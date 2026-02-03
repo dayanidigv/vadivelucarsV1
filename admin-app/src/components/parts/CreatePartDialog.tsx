@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react"
 import { useForm } from "react-hook-form"
 import { useCreatePart, useUpdatePart } from "@/hooks/useParts"
+import type { Part, CreatePartInput } from "@/types"
 import { Button } from "@/components/ui/button"
 import {
     Dialog,
@@ -23,7 +24,7 @@ import { Plus, Loader2 } from "lucide-react"
 import { toast } from "sonner"
 
 interface CreatePartDialogProps {
-    partToEdit?: any
+    partToEdit?: Part
     trigger?: React.ReactNode
 }
 
@@ -48,7 +49,7 @@ export function CreatePartDialog({ partToEdit, trigger }: CreatePartDialogProps)
                 name: partToEdit.name,
                 category: partToEdit.category,
                 unit: partToEdit.unit,
-                default_rate: partToEdit.default_rate
+                default_rate: partToEdit.default_rate.toString()
             })
         } else {
             reset({ name: "", category: "", unit: "No", default_rate: "" })
@@ -56,19 +57,22 @@ export function CreatePartDialog({ partToEdit, trigger }: CreatePartDialogProps)
     }, [partToEdit, reset, open])
 
     const onSubmit = (data: any) => {
-        const formattedData = {
-            ...data,
-            default_rate: Number(data.default_rate)
+        const formattedData: CreatePartInput = {
+            name: data.name,
+            category: data.category,
+            unit: data.unit,
+            default_rate: Number(data.default_rate),
+            is_active: partToEdit ? partToEdit.is_active : true
         }
 
-        if (isEditMode) {
+        if (isEditMode && partToEdit) {
             updatePart.mutate({ id: partToEdit.id, data: formattedData }, {
                 onSuccess: () => {
                     setOpen(false)
                     toast.success("Part updated successfully")
                     reset()
                 },
-                onError: (error: any) => {
+                onError: (error: Error) => {
                     toast.error(error.message || "Failed to update part")
                 }
             })
@@ -79,7 +83,7 @@ export function CreatePartDialog({ partToEdit, trigger }: CreatePartDialogProps)
                     toast.success("Part created successfully")
                     reset()
                 },
-                onError: (error: any) => {
+                onError: (error: Error) => {
                     toast.error(error.message || "Failed to create part")
                 }
             })
@@ -111,9 +115,9 @@ export function CreatePartDialog({ partToEdit, trigger }: CreatePartDialogProps)
 
                     <div className="space-y-2">
                         <Label htmlFor="category">Category *</Label>
-                        <Input 
-                            id="category" 
-                            {...register("category", { required: "Category is required" })} 
+                        <Input
+                            id="category"
+                            {...register("category", { required: "Category is required" })}
                             placeholder="Enter category (e.g., Engine, Body, Electrical)"
                         />
                         {errors.category && <span className="text-sm text-red-500">{errors.category.message as string}</span>}

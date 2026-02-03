@@ -1,3 +1,9 @@
+import type {
+    Customer, Part, Invoice, CreateInvoiceData,
+    CreateCustomerInput, CreatePartInput, User, CarModel,
+    CreateUserInput, UpdateUserInput, AuditLogInput, ApiResponse
+} from '@/types'
+
 export const API_URL = import.meta.env.VITE_API_URL || 'https://api.vadivelucars.in'
 
 export class ApiClient {
@@ -13,9 +19,9 @@ export class ApiClient {
     ): Promise<T> {
         const url = `${this.baseUrl}${endpoint}`
 
-        // Get tokens from localStorage for different user types
-        const adminToken = localStorage.getItem('token')
-        const customerToken = localStorage.getItem('customerToken')
+        // Get tokens from sessionStorage (high security) or localStorage (legacy/persistence)
+        const adminToken = sessionStorage.getItem('token') || localStorage.getItem('token')
+        const customerToken = sessionStorage.getItem('customerToken') || localStorage.getItem('customerToken')
 
         const headers: HeadersInit = {
             'Content-Type': 'application/json',
@@ -26,22 +32,15 @@ export class ApiClient {
         let token: string | null = null
         let tokenType: string = 'none'
 
-        if (endpoint.startsWith('/api/customer-auth')) {
-            // Customer auth endpoints - no token needed
+        if (endpoint.startsWith('/api/customer-auth/login') || endpoint.startsWith('/api/customer-auth/check-phone')) {
             tokenType = 'none'
-        } else if (endpoint.startsWith('/api/customer/')) {
-            // Customer-specific routes - use customer token
+        } else if (endpoint.startsWith('/api/customer-auth') || endpoint.startsWith('/api/customer/')) {
             token = customerToken
             tokenType = 'customer'
-        } else if (endpoint.startsWith('/api/auth')) {
-            // Admin auth endpoints - no token needed
+        } else if (endpoint === '/api/auth/login' || endpoint === '/api/auth/google') {
             tokenType = 'none'
-        } else if (endpoint.startsWith('/api/invoices/') && endpoint.endsWith('/print')) {
-            // Shared invoice print endpoint - try customer token first, then admin token
-            token = customerToken || adminToken
-            tokenType = customerToken ? 'customer' : (adminToken ? 'admin' : 'none')
         } else {
-            // Admin protected routes - use admin token
+            // All other routes (including /api/auth/verify) use adminToken
             token = adminToken
             tokenType = 'admin'
         }
@@ -49,19 +48,12 @@ export class ApiClient {
         // Add Authorization header if token is available
         if (token) {
             (headers as Record<string, string>)['Authorization'] = `Bearer ${token}`
-            // console.log(`🔐 Adding ${tokenType} auth header for:`, endpoint, 'Token length:', token.length)
         }
 
-        // if(!token){
-        //     console.log(`🔓 No auth header for:`, endpoint, {
-        //         tokenType,
-        //         hasAdminToken: !!adminToken,
-        //         hasCustomerToken: !!customerToken,
-        //         isAuthEndpoint: endpoint.startsWith('/api/auth'),
-        //         isCustomerAuthEndpoint: endpoint.startsWith('/api/customer-auth'),
-        //         isCustomerRoute: endpoint.startsWith('/api/customer/')
-        //     })
-        // }
+        // Safe logging in development only
+        if (import.meta.env.DEV) {
+            console.log(`📡 API Request: ${options?.method || 'GET'} ${endpoint} [Auth: ${tokenType} ${token ? '✓' : '✗'}]`)
+        }
 
         const response = await fetch(url, {
             ...options,
@@ -160,7 +152,7 @@ export class ApiClient {
         if (!customerToken) {
             throw new Error('No customer token found')
         }
-        return this.request<any>('/api/customer-auth/verify', {
+        return this.request<ApiResponse<any>>('/api/customer-auth/verify', {
             method: 'GET',
             headers: {
                 'Authorization': `Bearer ${customerToken}`
@@ -170,22 +162,22 @@ export class ApiClient {
 
     // Invoices
     async getInvoices(page = 1, limit = 20) {
-        return this.request<any>(`/api/invoices?page=${page}&limit=${limit}`)
+        return this.request<ApiResponse<Invoice[]>>(`/api/invoices?page=${page}&limit=${limit}`)
     }
 
     async getInvoice(id: string) {
-        return this.request<any>(`/api/invoices/${id}`)
+        return this.request<ApiResponse<Invoice>>(`/api/invoices/${id}`)
     }
 
-    async createInvoice(data: any) {
-        return this.request<any>('/api/invoices', {
+    async createInvoice(data: CreateInvoiceData) {
+        return this.request<ApiResponse<Invoice>>('/api/invoices', {
             method: 'POST',
             body: JSON.stringify(data),
         })
     }
 
-    async updateInvoice(id: string, data: any) {
-        return this.request<any>(`/api/invoices/${id}`, {
+    async updateInvoice(id: string, data: Partial<CreateInvoiceData>) {
+        return this.request<ApiResponse<Invoice>>(`/api/invoices/${id}`, {
             method: 'PUT',
             body: JSON.stringify(data),
         })
@@ -199,26 +191,26 @@ export class ApiClient {
 
     // Customers
     async getCustomers(page = 1, limit = 20) {
-        return this.request<any>(`/api/customers?page=${page}&limit=${limit}`)
+        return this.request<ApiResponse<Customer[]>>(`/api/customers?page=${page}&limit=${limit}`)
     }
 
     async searchCustomers(query: string) {
-        return this.request<any>(`/api/customers/search?q=${encodeURIComponent(query)}`)
+        return this.request<ApiResponse<{ customers: Customer[] }>>(`/api/customers/search?q=${encodeURIComponent(query)}`)
     }
 
     async getCustomer(id: string) {
-        return this.request<any>(`/api/customers/${id}`)
+        return this.request<ApiResponse<Customer>>(`/api/customers/${id}`)
     }
 
-    async createCustomer(data: any) {
-        return this.request<any>('/api/customers', {
+    async createCustomer(data: CreateCustomerInput) {
+        return this.request<ApiResponse<Customer>>('/api/customers', {
             method: 'POST',
             body: JSON.stringify(data),
         })
     }
 
-    async updateCustomer(id: string, data: any) {
-        return this.request<any>(`/api/customers/${id}`, {
+    async updateCustomer(id: string, data: Partial<CreateCustomerInput>) {
+        return this.request<ApiResponse<Customer>>(`/api/customers/${id}`, {
             method: 'PUT',
             body: JSON.stringify(data),
         })
@@ -232,11 +224,11 @@ export class ApiClient {
 
     // Car Models
     async getCarModels() {
-        return this.request<any>('/api/car-models')
+        return this.request<ApiResponse<CarModel[]>>('/api/car-models')
     }
 
     async searchCarModels(query: string) {
-        return this.request<any>(`/api/car-models/search?q=${encodeURIComponent(query)}`)
+        return this.request<ApiResponse<CarModel[]>>(`/api/car-models/search?q=${encodeURIComponent(query)}`)
     }
 
     // Parts
@@ -247,22 +239,22 @@ export class ApiClient {
         params.append('page', page.toString())
         params.append('limit', limit.toString())
 
-        return this.request<any>(`${url}?${params.toString()}`)
+        return this.request<ApiResponse<Part[]>>(`${url}?${params.toString()}`)
     }
 
     async searchParts(query: string) {
-        return this.request<any>(`/api/parts/search?q=${encodeURIComponent(query)}`)
+        return this.request<ApiResponse<Part[]>>(`/api/parts/search?q=${encodeURIComponent(query)}`)
     }
 
-    async createPart(data: any) {
-        return this.request<any>('/api/parts', {
+    async createPart(data: CreatePartInput) {
+        return this.request<ApiResponse<Part>>('/api/parts', {
             method: 'POST',
             body: JSON.stringify(data),
         })
     }
 
-    async updatePart(id: string, data: any) {
-        return this.request<any>(`/api/parts/${id}`, {
+    async updatePart(id: string, data: Partial<CreatePartInput>) {
+        return this.request<ApiResponse<Part>>(`/api/parts/${id}`, {
             method: 'PUT',
             body: JSON.stringify(data),
         })
@@ -276,71 +268,81 @@ export class ApiClient {
 
     // Dashboard
     async getDashboardStats() {
-        return this.request<any>('/api/dashboard')
+        return this.request<ApiResponse<any>>('/api/dashboard')
     }
 
     async getRevenueReports() {
-        return this.request<any>('/api/reports/revenue')
+        return this.request<ApiResponse<any>>('/api/reports/revenue')
     }
 
     // Users Management
     async getUsers(page = 1, limit = 20) {
-        return this.request<any>(`/api/users?page=${page}&limit=${limit}`)
+        return this.request<ApiResponse<User[]>>(`/api/users?page=${page}&limit=${limit}`)
     }
 
     async searchUsers(query: string) {
-        return this.request<any>(`/api/users?search=${encodeURIComponent(query)}`)
+        return this.request<ApiResponse<User[]>>(`/api/users?search=${encodeURIComponent(query)}`)
     }
 
     async getUser(id: string) {
-        return this.request<any>(`/api/users/${id}`)
+        return this.request<ApiResponse<User>>(`/api/users/${id}`)
     }
 
-    async createUser(data: any) {
-        return this.request<any>('/api/users', {
+    async createUser(data: CreateUserInput) {
+        return this.request<ApiResponse<User>>('/api/users', {
             method: 'POST',
             body: JSON.stringify(data),
         })
     }
 
-    async updateUser(id: string, data: any) {
-        return this.request<any>(`/api/users/${id}`, {
+    async updateUser(id: string, data: UpdateUserInput) {
+        return this.request<ApiResponse<User>>(`/api/users/${id}`, {
             method: 'PUT',
             body: JSON.stringify(data),
         })
     }
 
     async deleteUser(id: string) {
-        return this.request<any>(`/api/users/${id}`, {
+        return this.request<ApiResponse<any>>(`/api/users/${id}`, {
             method: 'DELETE',
         })
     }
 
     async resetUserPassword(id: string, data: { newPassword: string }) {
-        return this.request<any>(`/api/users/${id}/reset-password`, {
+        return this.request<ApiResponse<any>>(`/api/users/${id}/reset-password`, {
             method: 'POST',
             body: JSON.stringify(data),
         })
     }
 
     async toggleUserStatus(id: string) {
-        return this.request<any>(`/api/users/${id}/toggle-status`, {
+        return this.request<ApiResponse<any>>(`/api/users/${id}/toggle-status`, {
             method: 'POST',
+        })
+    }
+
+    async createAuditLog(data: AuditLogInput) {
+        return this.request<ApiResponse<any>>('/api/audit-logs', {
+            method: 'POST',
+            body: JSON.stringify(data)
+        }).catch(err => {
+            console.warn('Failed to log audit event:', err)
+            return { success: false } as ApiResponse<any> // Non-blocking failure
         })
     }
 
     // Customer-specific endpoints
     async getCustomerInvoices(page = 1, limit = 20) {
-        return this.request<any>(`/api/customer/invoices?page=${page}&limit=${limit}`)
+        return this.request<ApiResponse<Invoice[]>>(`/api/customer/invoices?page=${page}&limit=${limit}`)
     }
 
     async getCustomerInvoice(id: string) {
-        return this.request<any>(`/api/customer/invoices/${id}`)
+        return this.request<ApiResponse<Invoice>>(`/api/customer/invoices/${id}`)
     }
 
     // Shared invoice print endpoint
     async getInvoiceForPrint(id: string) {
-        return this.request<any>(`/api/invoices/${id}/print`)
+        return this.request<ApiResponse<Invoice>>(`/api/invoices/${id}/print`)
     }
 }
 

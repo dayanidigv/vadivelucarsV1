@@ -97,7 +97,7 @@ export function Combobox({
               placeholder={searchPlaceholder}
               value={searchQuery}
               onValueChange={handleSearchChange}
-              className="flex h-10 w-full rounded-md bg-transparent py-3 text-sm outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50"
+              className="flex h-5 w-full rounded-md bg-transparent py-1 text-sm outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50"
             />
           </div>
           <CommandList>

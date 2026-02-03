@@ -1,6 +1,8 @@
-import { createContext, useContext, useEffect, useState } from 'react'
+import { createContext, useContext, useEffect, useState, useCallback } from 'react'
 import type { ReactNode } from 'react'
 import { toast } from 'sonner'
+import { api } from '@/lib/api'
+import { encryptData } from '@/lib/crypto'
 
 interface User {
   id: string
@@ -18,9 +20,12 @@ interface AuthContextType {
   logout: () => Promise<void>
   isAuthenticated: boolean
   isLoading: boolean
+  verifySession: () => Promise<User | null>
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
+
+const SESSION_TIMEOUT = 30 * 60 * 1000 // 30 minutes
 
 export function useAuth() {
   const context = useContext(AuthContext)
@@ -39,44 +44,74 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [token, setToken] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
-  useEffect(() => {
-    const initAuth = () => {
-      try {
-        const storedToken = localStorage.getItem('token')
-        const storedUser = localStorage.getItem('user')
+  const verifySession = useCallback(async () => {
+    // Try sessionStorage for high security, fallback to localStorage if needed during migration
+    const storedToken = sessionStorage.getItem('token') || localStorage.getItem('token')
 
-        if (storedToken && storedUser) {
-          const userData = JSON.parse(storedUser)
-          setToken(storedToken)
-          setUser(userData)
-        }
-      } catch (error) {
-        console.error('Error initializing auth:', error)
-        // Clear corrupted data
+    if (!storedToken) {
+      setToken(null)
+      setUser(null)
+      return null
+    }
+
+    try {
+      const response = await api.verifyToken(storedToken)
+      if (response.success && response.data?.user) {
+        setToken(storedToken)
+        setUser(response.data.user)
+
+        // Ensure token is in sessionStorage for future use
+        sessionStorage.setItem('token', storedToken)
+        // Cleanup localStorage token if it was there
         localStorage.removeItem('token')
-        localStorage.removeItem('user')
-      } finally {
-        setIsLoading(false)
+
+        // Store encrypted user data
+        const encryptedUser = await encryptData(JSON.stringify(response.data.user))
+        localStorage.setItem('user', encryptedUser)
+
+        return response.data.user
       }
+    } catch (error) {
+      console.error('Session verification failed:', error)
+      sessionStorage.removeItem('token')
+      localStorage.removeItem('token')
+      localStorage.removeItem('user')
+      setToken(null)
+      setUser(null)
+    }
+    return null
+  }, [])
+
+  useEffect(() => {
+    const initAuth = async () => {
+      setIsLoading(true)
+      await verifySession()
+      setIsLoading(false)
     }
 
     initAuth()
-  }, [])
+  }, [verifySession])
 
-  const login = (newToken: string, userData: User) => {
-    console.log('🔐 AuthContext.login called:', { 
-      tokenLength: newToken.length, 
-      userId: userData.id,
-      username: userData.username 
-    })
-    
-    localStorage.setItem('token', newToken)
-    localStorage.setItem('user', JSON.stringify(userData))
+  const login = async (newToken: string, userData: User) => {
+    // console.log('🔐 AuthContext.login called:', {
+    //   tokenLength: newToken.length,
+    //   userId: userData.id,
+    //   username: userData.username
+    // })
+
+    // Store token in sessionStorage (not accessible across different tabs/windows)
+    sessionStorage.setItem('token', newToken)
+    // Clear old token if any
+    localStorage.removeItem('token')
+
+    // Encrypt user data before storing in localStorage
+    const encryptedUser = await encryptData(JSON.stringify(userData))
+    localStorage.setItem('user', encryptedUser)
+
     setToken(newToken)
     setUser(userData)
-    
-    console.log('✅ Token stored in localStorage')
-    console.log('🔍 Verify token stored:', localStorage.getItem('token')?.substring(0, 20) + '...')
+
+    console.log('✅ Token stored in sessionStorage & Encrypted user data in localStorage')
   }
 
   const logout = async () => {
@@ -98,9 +133,12 @@ export function AuthProvider({ children }: AuthProviderProps) {
     } catch (error) {
       console.error('Error during logout:', error)
     } finally {
-      // Always clear local storage even if API call fails
+      // Always clear storage even if API call fails
+      sessionStorage.removeItem('token')
+      sessionStorage.removeItem('invoice-draft')
       localStorage.removeItem('token')
       localStorage.removeItem('user')
+      localStorage.removeItem('invoice-draft')
       setToken(null)
       setUser(null)
       toast.success('Logged out successfully')
@@ -116,8 +154,43 @@ export function AuthProvider({ children }: AuthProviderProps) {
     login,
     logout,
     isAuthenticated,
-    isLoading
+    isLoading,
+    verifySession
   }
+
+  // Session timeout implementation
+  useEffect(() => {
+    if (!isAuthenticated) return
+
+    let timeoutId: number
+
+    const handleLogout = async () => {
+      await logout()
+      toast.warning('Session expired. Please login again.')
+      window.location.href = '/login'
+    }
+
+    const resetTimeout = () => {
+      if (timeoutId) clearTimeout(timeoutId)
+      timeoutId = setTimeout(handleLogout, SESSION_TIMEOUT)
+    }
+
+    const events = ['mousedown', 'keydown', 'scroll', 'touchstart']
+    const resetOnActivity = () => resetTimeout()
+
+    events.forEach(event => {
+      document.addEventListener(event, resetOnActivity)
+    })
+
+    resetTimeout()
+
+    return () => {
+      if (timeoutId) clearTimeout(timeoutId)
+      events.forEach(event => {
+        document.removeEventListener(event, resetOnActivity)
+      })
+    }
+  }, [isAuthenticated, logout])
 
   return (
     <AuthContext.Provider value={value}>

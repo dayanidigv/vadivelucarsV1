@@ -48,10 +48,12 @@ import {
     Clock
 } from "lucide-react"
 import { format } from "date-fns"
+import { escape } from "lodash"
 import { Link } from "react-router-dom"
 import { useState, useMemo } from "react"
 import { useInvoices, useDeleteInvoice } from "@/hooks/useInvoices"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import type { Invoice } from "@/types"
 
 export function InvoiceList() {
     // State
@@ -73,12 +75,12 @@ export function InvoiceList() {
         let filtered = [...invoices]
 
         if (statusFilter !== "all") {
-            filtered = filtered.filter((inv: any) => inv.payment_status === statusFilter)
+            filtered = filtered.filter((inv: Invoice) => inv.payment_status === statusFilter)
         }
 
         if (search.trim()) {
             const query = search.toLowerCase()
-            filtered = filtered.filter((inv: any) =>
+            filtered = filtered.filter((inv: Invoice) =>
                 inv.invoice_number.toLowerCase().includes(query) ||
                 inv.customer?.name.toLowerCase().includes(query) ||
                 inv.vehicle?.vehicle_number.toLowerCase().includes(query)
@@ -90,10 +92,10 @@ export function InvoiceList() {
 
     // Stats calculation
     const stats = useMemo(() => {
-        const total = invoices.reduce((sum: number, inv: any) => sum + parseFloat(inv.grand_total || 0), 0)
-        const paid = invoices.filter((inv: any) => inv.payment_status === 'paid').length
-        const unpaid = invoices.filter((inv: any) => inv.payment_status === 'unpaid' || inv.payment_status === 'pending').length
-        const partial = invoices.filter((inv: any) => inv.payment_status === 'partial').length
+        const total = invoices.reduce((sum: number, inv: Invoice) => sum + parseFloat(String(inv.grand_total || 0)), 0)
+        const paid = invoices.filter((inv: Invoice) => inv.payment_status === 'paid').length
+        const unpaid = invoices.filter((inv: Invoice) => inv.payment_status === 'unpaid' || inv.payment_status === 'pending').length
+        const partial = invoices.filter((inv: Invoice) => inv.payment_status === 'partial').length
 
         return { total, paid, unpaid, partial, count: invoices.length }
     }, [invoices])
@@ -281,7 +283,7 @@ export function InvoiceList() {
                                         </TableCell>
                                     </TableRow>
                                 ) : (
-                                    filteredInvoices.map((invoice: any) => (
+                                    filteredInvoices.map((invoice: Invoice) => (
                                         <TableRow key={invoice.id} className="hover:bg-gray-50 transition-colors">
                                             <TableCell>
                                                 <div className="flex items-center gap-2">
@@ -300,7 +302,7 @@ export function InvoiceList() {
                                                     </div>
                                                     <div>
                                                         <p className="font-semibold text-sm text-gray-900">
-                                                            {invoice.customer?.name}
+                                                            {escape(invoice.customer?.name)}
                                                         </p>
                                                         <p className="text-xs text-gray-500">
                                                             {invoice.customer?.phone}
@@ -315,10 +317,10 @@ export function InvoiceList() {
                                                     </div>
                                                     <div>
                                                         <p className="font-mono text-xs font-semibold text-gray-900 bg-gray-100 px-2 py-0.5 rounded">
-                                                            {invoice.vehicle?.vehicle_number}
+                                                            {escape(invoice.vehicle?.vehicle_number)}
                                                         </p>
                                                         <p className="text-xs text-gray-500 mt-0.5">
-                                                            {invoice.vehicle?.model}
+                                                            {escape(invoice.vehicle?.model)}
                                                         </p>
                                                     </div>
                                                 </div>
@@ -333,17 +335,17 @@ export function InvoiceList() {
                                                 <div className="flex items-center justify-end gap-1">
                                                     <IndianRupee className="h-4 w-4 text-gray-600" />
                                                     <span className="font-bold text-gray-900">
-                                                        {parseFloat(invoice.grand_total).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                                                        {Number(invoice.grand_total).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                                                     </span>
                                                 </div>
                                             </TableCell>
                                             <TableCell>
                                                 <Badge
                                                     className={`font-medium ${invoice.payment_status === 'paid'
-                                                            ? 'bg-green-100 text-green-700 hover:bg-green-200'
-                                                            : invoice.payment_status === 'unpaid' || invoice.payment_status === 'pending'
-                                                                ? 'bg-red-100 text-red-700 hover:bg-red-200'
-                                                                : 'bg-yellow-100 text-yellow-700 hover:bg-yellow-200'
+                                                        ? 'bg-green-100 text-green-700 hover:bg-green-200'
+                                                        : invoice.payment_status === 'unpaid' || invoice.payment_status === 'pending'
+                                                            ? 'bg-red-100 text-red-700 hover:bg-red-200'
+                                                            : 'bg-yellow-100 text-yellow-700 hover:bg-yellow-200'
                                                         }`}
                                                 >
                                                     {invoice.payment_status === 'pending' ? 'Unpaid' : invoice.payment_status}

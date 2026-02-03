@@ -3,6 +3,7 @@ import { useState, useEffect, useMemo } from "react"
 import { useForm, useFieldArray } from "react-hook-form"
 import { useCreateCustomer, useUpdateCustomer } from "@/hooks/useCustomers"
 import { useCarModels } from "@/hooks/useCarModels"
+import type { Customer, CreateCustomerInput, CarModel } from "@/types"
 import { Button } from "@/components/ui/button"
 import {
     Dialog,
@@ -18,7 +19,7 @@ import { toast } from "sonner"
 import { Combobox } from "@/components/ui/combobox"
 
 interface CreateCustomerDialogProps {
-    customerToEdit?: any
+    customerToEdit?: Customer
     trigger?: React.ReactNode
     open?: boolean
     onOpenChange?: (open: boolean) => void
@@ -61,19 +62,20 @@ export function CreateCustomerDialog({ customerToEdit, trigger, open: controlled
 
     // Get unique makes
     const makeOptions = useMemo(() => {
-        if (!carModels) return []
-        const uniqueMakes = Array.from(new Set(carModels.map((m: any) => m.make))).sort()
-        return uniqueMakes.map(make => ({ label: make as string, value: make as string }))
+        const models = carModels || []
+        const uniqueMakes = Array.from(new Set(models.map((m: CarModel) => m.make))).sort()
+        return uniqueMakes.map(make => ({ label: make, value: make }))
     }, [carModels])
 
     // Get models for each vehicle
     const getModelOptions = (index: number) => {
         const make = watchedVehicles[index]?.make
-        if (!make || !carModels) return []
-        return carModels
-            .filter((m: any) => m.make === make)
-            .map((m: any) => ({ label: m.model, value: m.model }))
-            .sort((a: any, b: any) => a.label.localeCompare(b.label))
+        const models = carModels || []
+        if (!make) return []
+        return models
+            .filter((m: CarModel) => m.make === make)
+            .map((m: CarModel) => ({ label: m.model, value: m.model }))
+            .sort((a, b) => a.label.localeCompare(b.label))
     }
 
     useEffect(() => {
@@ -105,21 +107,27 @@ export function CreateCustomerDialog({ customerToEdit, trigger, open: controlled
 
     const onSubmit = (data: any) => {
         // Ensure empty strings are sent as null for phone/email/address
-        const cleanData = {
-            ...data,
-            phone: data.phone || null,
-            email: data.email || null,
-            address: data.address || null
+        const cleanData: CreateCustomerInput = {
+            name: data.name,
+            phone: data.phone || undefined,
+            email: data.email || undefined,
+            address: data.address || undefined,
+            vehicles: data.vehicles.map((v: any) => ({
+                vehicle_number: v.vehicle_number,
+                make: v.make || undefined,
+                model: v.model || undefined,
+                year: v.year ? parseInt(v.year) : undefined
+            }))
         }
 
-        if (isEditMode) {
+        if (isEditMode && customerToEdit) {
             updateCustomer.mutate({ id: customerToEdit.id, data: cleanData }, {
                 onSuccess: () => {
                     setIsOpen(false)
                     toast.success("Customer updated successfully")
                     reset()
                 },
-                onError: (error: any) => {
+                onError: (error: Error) => {
                     toast.error(error.message || "Failed to update customer")
                 }
             })
@@ -130,7 +138,7 @@ export function CreateCustomerDialog({ customerToEdit, trigger, open: controlled
                     toast.success("Customer created successfully")
                     reset()
                 },
-                onError: (error: any) => {
+                onError: (error: Error) => {
                     toast.error(error.message || "Failed to create customer")
                 }
             })
