@@ -1,10 +1,12 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { Car, Camera, Plus, Edit, Trash2, Save, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { toast } from 'sonner'
+import { Combobox } from '@/components/ui/combobox'
+import { useCarModels } from '@/hooks/useCarModels'
 import PhotoCapture from '@/components/invoice/PhotoCapture'
 
 interface Vehicle {
@@ -36,6 +38,24 @@ export default function VehicleManagement({
     current_mileage: '',
     photos: []
   })
+
+  // Fetch car models
+  const { data: carModelsData } = useCarModels()
+
+  // Extract unique makes
+  const uniqueMakes = useMemo(() => {
+    if (!carModelsData) return []
+    const makes = carModelsData.map((m: any) => m.make)
+    return Array.from(new Set(makes)).sort() as string[]
+  }, [carModelsData])
+
+  // Filter models based on selected make
+  const availableModels = useMemo(() => {
+    if (!carModelsData || !formData.make) return []
+    return carModelsData
+      .filter((m: any) => m.make === formData.make)
+      .sort((a: any, b: any) => a.model.localeCompare(b.model))
+  }, [carModelsData, formData.make])
 
   const handleAddVehicle = () => {
     if (!formData.vehicle_number || !formData.make || !formData.model) {
@@ -153,23 +173,27 @@ export default function VehicleManagement({
                 />
               </div>
               <div>
-                <Label htmlFor="make">Make *</Label>
-                <Input
-                  id="make"
+                <Label>Make *</Label>
+                <Combobox
+                  placeholder="Select Make"
+                  searchPlaceholder="Search make..."
                   value={formData.make}
-                  onChange={(e) => setFormData(prev => ({ ...prev, make: e.target.value }))}
-                  placeholder="e.g., Toyota"
-                  required
+                  onSearch={() => { }} // Client-side filtering is enough
+                  options={uniqueMakes.map(make => ({ label: make, value: make }))}
+                  onChange={(val) => {
+                    setFormData(prev => ({ ...prev, make: val, model: '' })) // Reset model
+                  }}
                 />
               </div>
               <div>
-                <Label htmlFor="model">Model *</Label>
-                <Input
-                  id="model"
+                <Label>Model *</Label>
+                <Combobox
+                  placeholder="Select Model"
+                  searchPlaceholder="Search model..."
                   value={formData.model}
-                  onChange={(e) => setFormData(prev => ({ ...prev, model: e.target.value }))}
-                  placeholder="e.g., Innova"
-                  required
+                  options={availableModels.map((model: any) => ({ label: model.model, value: model.model }))}
+                  onChange={(val) => setFormData(prev => ({ ...prev, model: val }))}
+                  disabled={!formData.make}
                 />
               </div>
               <div>

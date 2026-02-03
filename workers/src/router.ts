@@ -10,6 +10,7 @@ import * as customerInvoiceController from './controllers/customerInvoice'
 import * as customerProfileController from './controllers/customerProfile'
 import * as customerVehicleController from './controllers/customerVehicle'
 import * as customerFeedbackController from './controllers/customerFeedback'
+import * as carModelController from './controllers/carModel'
 import { Env } from './lib/supabase'
 
 // Define Bindings to include Env
@@ -74,6 +75,9 @@ router.get('/parts/recent', partsController.recent)
 router.post('/parts', partsController.create)
 router.put('/parts/:id', partsController.update)
 router.delete('/parts/:id', partsController.remove)
+
+// Car Models
+router.route('/car-models', carModelController.carModels)
 
 // Dashboard
 router.get('/dashboard', dashboardController.getStats)

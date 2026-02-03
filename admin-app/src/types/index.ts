@@ -2,7 +2,7 @@
 export interface Customer {
     id: string
     name: string
-    phone: string
+    phone?: string
     email?: string
     address?: string
     created_at: string
@@ -80,4 +80,5 @@ export interface CreateInvoiceData {
     paid_amount?: number
     notes?: string
     mechanic_name?: string
+    invoice_date?: string
 }

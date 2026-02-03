@@ -3,10 +3,10 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '../lib/api'
 import type { CreateInvoiceData } from '../types'
 
-export function useInvoices(page = 1) {
+export function useInvoices(page = 1, limit = 20) {
     return useQuery({
-        queryKey: ['invoices', page],
-        queryFn: () => api.getInvoices(page),
+        queryKey: ['invoices', page, limit],
+        queryFn: () => api.getInvoices(page, limit),
     })
 }
 

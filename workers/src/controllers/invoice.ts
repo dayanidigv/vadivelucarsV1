@@ -62,37 +62,47 @@ export async function print(c: Context) {
 }
 
 export async function list(c: Context) {
-    const supabase = getSupabaseClient(c.env)
+    try {
+        const supabase = getSupabaseClient(c.env)
 
-    const page = Number(c.req.query('page')) || 1
-    const limit = Number(c.req.query('limit')) || 20
-    const offset = (page - 1) * limit
+        const pageQuery = c.req.query('page')
+        const limitQuery = c.req.query('limit')
 
-    const { data, error, count } = await supabase
-        .from('invoices')
-        .select(`
-      *,
-      customer:customers(*),
-      vehicle:vehicles(*)
-    `, { count: 'exact' })
-        .order('created_at', { ascending: false })
-        .range(offset, offset + limit - 1)
+        const page = pageQuery ? parseInt(pageQuery) : 1
+        const limit = limitQuery ? parseInt(limitQuery) : 20
+        const offset = (page - 1) * limit
 
-    if (error) {
-        console.error('Error fetching invoices:', error)
-        return c.json({ error: error.message }, 400)
-    }
+        console.log(`[InvoiceList] Fetching page=${page}, limit=${limit}, offset=${offset}`)
 
-    return c.json({
-        success: true,
-        data,
-        pagination: {
-            page,
-            limit,
-            total: count || 0,
-            pages: Math.ceil((count || 0) / limit)
+        const { data, error, count } = await supabase
+            .from('invoices')
+            .select(`
+                *,
+                customer:customers(*),
+                vehicle:vehicles(*)
+            `, { count: 'exact' })
+            .order('created_at', { ascending: false })
+            .range(offset, offset + limit - 1)
+
+        if (error) {
+            console.error('[InvoiceList] Supabase error:', error)
+            return c.json({ error: error.message }, 400)
         }
-    })
+
+        return c.json({
+            success: true,
+            data,
+            pagination: {
+                page,
+                limit,
+                total: count || 0,
+                pages: Math.ceil((count || 0) / limit)
+            }
+        })
+    } catch (e: any) {
+        console.error('[InvoiceList] Internal error:', e)
+        return c.json({ error: e.message || 'Internal Server Error', details: String(e) }, 500)
+    }
 }
 
 export async function get(c: Context) {
@@ -189,6 +199,7 @@ export async function create(c: Context) {
             paid_amount: body.paid_amount || 0,
             notes: body.notes,
             mechanic_name: body.mechanic_name,
+            invoice_date: body.invoice_date,
             grand_total: 0 // Placeholder, will update
         })
         .select()
@@ -306,7 +317,8 @@ export async function update(c: Context) {
             payment_method: invoiceData.payment_method,
             paid_amount: invoiceData.paid_amount || 0,
             notes: invoiceData.notes,
-            mechanic_name: invoiceData.mechanic_name
+            mechanic_name: invoiceData.mechanic_name,
+            invoice_date: invoiceData.invoice_date
         })
         .eq('id', id)
         .select()

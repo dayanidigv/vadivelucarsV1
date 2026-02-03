@@ -13,7 +13,7 @@ function hasPermission(userRole: string, requiredRole: string): boolean {
         'staff': 2,
         'technician': 1
     }
-    
+
     return roleHierarchy[userRole as keyof typeof roleHierarchy] >= roleHierarchy[requiredRole as keyof typeof roleHierarchy]
 }
 
@@ -30,7 +30,7 @@ async function getCurrentUser(c: Context): Promise<any> {
 export async function list(c: Context) {
     try {
         const currentUser = await getCurrentUser(c)
-        
+
         // Only admin and manager can list users
         if (!hasPermission(currentUser.role, 'manager')) {
             return c.json({ success: false, message: 'Insufficient permissions' }, 403)
@@ -99,7 +99,7 @@ export async function get(c: Context) {
 export async function create(c: Context) {
     try {
         const currentUser = await getCurrentUser(c)
-        
+
         // Only admin and manager can create users
         if (!hasPermission(currentUser.role, 'manager')) {
             return c.json({ success: false, message: 'Insufficient permissions' }, 403)
@@ -116,8 +116,8 @@ export async function create(c: Context) {
         const supabase = getSupabaseClient(c.env)
 
         // Validate required fields
-        if (!username || !email || !password || !name) {
-            return c.json({ success: false, message: 'Username, email, password, and name are required' }, 400)
+        if (!username || !email || !name) {
+            return c.json({ success: false, message: 'Username, email, and name are required' }, 400)
         }
 
         // Check if username or email already exists
@@ -131,8 +131,11 @@ export async function create(c: Context) {
             return c.json({ success: false, message: 'Username or email already exists' }, 409)
         }
 
-        // Hash password
-        const passwordHash = await hash(password, 10)
+        // Hash password if provided
+        let passwordHash = null
+        if (password) {
+            passwordHash = await hash(password, 10)
+        }
 
         // Create user
         const { data, error } = await supabase
@@ -253,7 +256,7 @@ export async function resetPassword(c: Context) {
 
         const { error } = await supabase
             .from('users')
-            .update({ 
+            .update({
                 password_hash: passwordHash,
                 login_attempts: 0,
                 locked_until: null,
@@ -293,7 +296,7 @@ export async function toggleStatus(c: Context) {
 
         const { data, error } = await supabase
             .from('users')
-            .update({ 
+            .update({
                 is_active: newStatus,
                 updated_at: new Date().toISOString()
             })

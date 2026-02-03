@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { Link, useLocation, useNavigate, Outlet } from 'react-router-dom'
-import { Home, FileText, Users, Package, BarChart3, Menu, X, Settings, LogOut, UserIcon } from 'lucide-react'
+import { Home, FileText, Users, Package, BarChart3, Menu, X, Settings, LogOut, UserIcon, ChevronDown } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
 
 const navigation = [
@@ -10,7 +10,7 @@ const navigation = [
     { name: 'Parts', href: '/parts', icon: Package, roles: ['admin', 'manager', 'staff', 'technician'] },
     { name: 'Users', href: '/users', icon: UserIcon, roles: ['admin', 'manager'] },
     { name: 'Reports', href: '/reports', icon: BarChart3, roles: ['admin'] },
-    { name: 'Settings', href: '/settings', icon: Settings, roles: ['admin', 'manager'] },
+    { name: 'Settings', href: '/settings', icon: Settings, roles: ['super-admin'] },
 ]
 
 export function AdminLayout() {
@@ -32,127 +32,171 @@ export function AdminLayout() {
         return () => document.removeEventListener('mousedown', handleClickOutside)
     }, [])
 
+    // Close mobile menu on route change
+    useEffect(() => {
+        setIsMobileMenuOpen(false)
+    }, [location.pathname])
+
+    const filteredNavigation = navigation.filter(item => item.roles.includes(user?.role || ''))
+
+    const getInitials = (name: string) => {
+        return name
+            .split(' ')
+            .map(n => n[0])
+            .join('')
+            .toUpperCase()
+            .slice(0, 2)
+    }
+
     return (
         <div className="min-h-screen bg-gray-50 flex flex-col">
             {/* Header */}
-            <header className="bg-white border-b border-gray-200 sticky top-0 z-10">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
+            <header className="bg-white border-b border-gray-200 sticky top-0 z-50 shadow-sm">
+                <div className="max-w-10xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="flex justify-between items-center h-16">
-                        <div className="flex items-center justify-center">
-
-                            <h1 className="ml-2 text-xl font-bold text-gray-900" style={{
-                                fontFamily: "'Revue Std Bold', serif"
-                            }}>
-                                Vadivelu Cars
-                            </h1>
+                        {/* Logo Section */}
+                        <div className="flex items-center space-x-3">
+                            <div>
+                                <h1 className="text-2xl font-bold text-[#065DE5]" style={{
+                                    fontFamily: "'Revue Std Bold', serif"
+                                }}>
+                                    Vadivelu Cars
+                                </h1>
+                            </div>
                         </div>
 
-                        {/* Desktop Nav */}
-                        <nav className="hidden md:flex space-x-1">
-                            {navigation
-                                .filter(item => item.roles.includes(user?.role || ''))
-                                .map((item) => {
-                                    const Icon = item.icon
-                                    const isActive = location.pathname === item.href || (item.href !== '/' && location.pathname.startsWith(item.href))
-                                    return (
-                                        <Link
-                                            key={item.name}
-                                            to={item.href}
-                                            className={`flex items-center px-3 py-2 rounded-md text-sm font-medium transition-colors ${isActive
-                                                ? 'bg-primary/10 text-primary'
-                                                : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
-                                                }`}
-                                        >
-                                            <Icon className="mr-2 h-4 w-4" />
-                                            {item.name}
-                                        </Link>
-                                    )
-                                })}
+                        {/* Desktop Navigation */}
+                        <nav className="hidden lg:flex items-center space-x-1">
+                            {filteredNavigation.map((item) => {
+                                const Icon = item.icon
+                                const isActive = location.pathname === item.href || (item.href !== '/dashboard' && location.pathname.startsWith(item.href))
+                                return (
+                                    <Link
+                                        key={item.name}
+                                        to={item.href}
+                                        className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${isActive
+                                            ? 'bg-[#065DE5] text-white shadow-md'
+                                            : 'text-gray-700 hover:bg-gray-100'
+                                            }`}
+                                    >
+                                        <Icon className="h-4 w-4" />
+                                        <span>{item.name}</span>
+                                    </Link>
+                                )
+                            })}
                         </nav>
 
-                        {/* User Menu */}
-                        <div className="relative" ref={userMenuRef}>
-                            <button
-                                onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
-                                className="flex items-center space-x-3 text-sm rounded-md p-2 hover:bg-gray-100 transition-colors"
-                            >
-                                <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center">
-                                    <UserIcon className="w-4 h-4 text-primary" />
-                                </div>
-                                <div className="hidden md:block text-left">
-                                    <div className="font-medium text-gray-900">{user?.name || user?.username}</div>
-                                    <div className="text-xs text-gray-500 capitalize">{user?.role}</div>
-                                </div>
-                            </button>
+                        {/* Right Section */}
+                        <div className="flex items-center gap-2">
 
-                            {isUserMenuOpen && (
-                                <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50 border border-gray-200">
-                                    <div className="px-4 py-2 border-b border-gray-100">
-                                        <div className="text-sm font-medium text-gray-900">{user?.name || user?.username}</div>
-                                        <div className="text-xs text-gray-500">{user?.email}</div>
+                            {/* User Menu */}
+                            <div className="relative" ref={userMenuRef}>
+                                <button
+                                    onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
+                                    className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-100 transition-colors"
+                                >
+                                    <div className="w-9 h-9 bg-[#065DE5] rounded-lg flex items-center justify-center text-white text-sm font-semibold shadow-sm">
+                                        {getInitials(user?.name || user?.username || 'User')}
                                     </div>
-                                    <button
-                                        onClick={async () => {
-                                            await logout()
-                                            setIsUserMenuOpen(false)
-                                            navigate('/login')
-                                        }}
-                                        className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
-                                    >
-                                        <LogOut className="mr-2 h-4 w-4" />
-                                        Logout
-                                    </button>
-                                </div>
-                            )}
-                        </div>
+                                    <div className="hidden md:flex flex-col items-start">
+                                        <span className="text-sm font-semibold text-gray-900">
+                                            {user?.name || user?.username}
+                                        </span>
+                                        <span className="text-xs text-gray-500 capitalize">
+                                            {user?.role}
+                                        </span>
+                                    </div>
+                                    <ChevronDown className={`hidden md:block h-4 w-4 text-gray-500 transition-transform ${isUserMenuOpen ? 'rotate-180' : ''}`} />
+                                </button>
 
-                        {/* Mobile Menu Button */}
-                        <div className="md:hidden">
+                                {/* User Dropdown */}
+                                {isUserMenuOpen && (
+                                    <div className="absolute right-0 mt-2 w-64 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50">
+                                        <div className="px-4 py-3 border-b border-gray-100">
+                                            <p className="text-sm font-semibold text-gray-900">
+                                                {user?.name || user?.username}
+                                            </p>
+                                            <p className="text-xs text-gray-500 mt-1">
+                                                {user?.email}
+                                            </p>
+                                            <span className="inline-flex items-center px-2 py-1 mt-2 rounded-md text-xs font-medium bg-blue-50 text-blue-700 capitalize">
+                                                {user?.role}
+                                            </span>
+                                        </div>
+                                        <button
+                                            onClick={async () => {
+                                                await logout()
+                                                setIsUserMenuOpen(false)
+                                                navigate('/login')
+                                            }}
+                                            className="flex items-center gap-2 w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                                        >
+                                            <LogOut className="h-4 w-4" />
+                                            <span>Logout</span>
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Mobile Menu Button */}
                             <button
                                 onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                                className="p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100 focus:outline-none"
+                                className="lg:hidden flex items-center justify-center w-10 h-10 rounded-lg hover:bg-gray-100 transition-colors"
                             >
                                 {isMobileMenuOpen ? (
-                                    <X className="h-6 w-6" />
+                                    <X className="h-6 w-6 text-gray-600" />
                                 ) : (
-                                    <Menu className="h-6 w-6" />
+                                    <Menu className="h-6 w-6 text-gray-600" />
                                 )}
                             </button>
                         </div>
                     </div>
                 </div>
 
-                {/* Mobile Nav Panel */}
+                {/* Mobile Navigation */}
                 {isMobileMenuOpen && (
-                    <div className="md:hidden border-t border-gray-200 bg-white">
-                        <div className="px-2 pt-2 pb-3 space-y-1">
-                            {navigation
-                                .filter(item => item.roles.includes(user?.role || ''))
-                                .map((item) => {
-                                    const Icon = item.icon
-                                    const isActive = location.pathname === item.href || (item.href !== '/' && location.pathname.startsWith(item.href))
-                                    return (
-                                        <Link
-                                            key={item.name}
-                                            to={item.href}
-                                            onClick={() => setIsMobileMenuOpen(false)}
-                                            className={`flex items-center px-3 py-2 rounded-md text-base font-medium ${isActive
-                                                ? 'bg-primary/10 text-primary'
-                                                : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
-                                                }`}
-                                        >
-                                            <Icon className="mr-2 h-4 w-4" />
-                                            {item.name}
-                                        </Link>
-                                    )
-                                })}
-                        </div>
+                    <div className="lg:hidden border-t border-gray-200 bg-white">
+                        <nav className="px-4 py-4 space-y-1">
+                            {filteredNavigation.map((item) => {
+                                const Icon = item.icon
+                                const isActive = location.pathname === item.href || (item.href !== '/dashboard' && location.pathname.startsWith(item.href))
+                                return (
+                                    <Link
+                                        key={item.name}
+                                        to={item.href}
+                                        className={`flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all ${isActive
+                                            ? 'bg-[#065DE5] text-white shadow-md'
+                                            : 'text-gray-700 hover:bg-gray-100'
+                                            }`}
+                                    >
+                                        <Icon className="h-5 w-5" />
+                                        <span>{item.name}</span>
+                                    </Link>
+                                )
+                            })}
+                        </nav>
                     </div>
                 )}
             </header>
+
+            {/* Main Content */}
             <main className="flex-1 max-w-7xl w-full mx-auto py-6 px-4 sm:px-6 lg:px-8">
                 <Outlet />
             </main>
+
+            {/* Footer */}
+            <footer className="bg-white border-t border-gray-200 py-4 mt-auto">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                    <div className="flex flex-col sm:flex-row justify-between items-center gap-2">
+                        <p className="text-sm text-gray-600">
+                            © 2026 Vadivelu Cars. All rights reserved.
+                        </p>
+                        <p className="text-xs text-gray-500">
+                            Version 2.0.0
+                        </p>
+                    </div>
+                </div>
+            </footer>
         </div>
     )
 }

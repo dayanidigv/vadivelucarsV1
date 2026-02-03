@@ -26,6 +26,7 @@ interface InvoiceVehicle {
 interface Invoice {
     id: string
     invoice_number: number
+    invoice_date: number
     created_at: string
     customer: InvoiceCustomer
     vehicle: InvoiceVehicle
@@ -452,7 +453,7 @@ export default function InvoicePDF({ invoice }: { invoice: Invoice }) {
                                             <View style={{ flexDirection: 'row', flex: 1 }}>
                                                 <Text style={styles.customerLabel}>Date :</Text>
                                                 <Text style={{ ...styles.customerValue, flex: 0, width: 60 }}>
-                                                    {new Date(invoice.created_at).toLocaleDateString("en-GB")}
+                                                    {new Date(invoice.invoice_date).toLocaleDateString("en-GB")}
                                                 </Text>
                                             </View>
                                             <View style={{ flexDirection: 'row', alignItems: 'center' }}>

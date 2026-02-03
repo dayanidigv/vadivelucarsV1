@@ -90,14 +90,19 @@ export async function create(c: Context) {
     const body = await c.req.json()
     const supabase = getSupabaseClient(c.env)
 
+    // Validate required fields
+    if (!body.name) {
+        return c.json({ error: 'Name is required' }, 400)
+    }
+
     // Create customer
     const { data: customer, error: customerError } = await supabase
         .from('customers')
         .insert({
             name: body.name,
-            phone: body.phone,
-            email: body.email,
-            address: body.address
+            phone: body.phone || null,
+            email: body.email || null,
+            address: body.address || null
         })
         .select()
         .single()
@@ -108,7 +113,7 @@ export async function create(c: Context) {
 
     // Create vehicles if provided (handle both single vehicle and multiple vehicles)
     const vehicles = body.vehicles || (body.vehicle ? [body.vehicle] : [])
-    
+
     if (vehicles.length > 0) {
         const vehiclesToInsert = vehicles.map((vehicle: any) => ({
             customer_id: customer.id,
@@ -190,8 +195,8 @@ export async function update(c: Context) {
         }
     }
 
-    return c.json({ 
-        success: true, 
+    return c.json({
+        success: true,
         data: customer,
         message: 'Customer updated successfully'
     })

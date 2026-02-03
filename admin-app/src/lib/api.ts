@@ -49,17 +49,19 @@ export class ApiClient {
         // Add Authorization header if token is available
         if (token) {
             (headers as Record<string, string>)['Authorization'] = `Bearer ${token}`
-            console.log(`🔐 Adding ${tokenType} auth header for:`, endpoint, 'Token length:', token.length)
-        } else {
-            console.log(`🔓 No auth header for:`, endpoint, {
-                tokenType,
-                hasAdminToken: !!adminToken,
-                hasCustomerToken: !!customerToken,
-                isAuthEndpoint: endpoint.startsWith('/api/auth'),
-                isCustomerAuthEndpoint: endpoint.startsWith('/api/customer-auth'),
-                isCustomerRoute: endpoint.startsWith('/api/customer/')
-            })
+            // console.log(`🔐 Adding ${tokenType} auth header for:`, endpoint, 'Token length:', token.length)
         }
+
+        // if(!token){
+        //     console.log(`🔓 No auth header for:`, endpoint, {
+        //         tokenType,
+        //         hasAdminToken: !!adminToken,
+        //         hasCustomerToken: !!customerToken,
+        //         isAuthEndpoint: endpoint.startsWith('/api/auth'),
+        //         isCustomerAuthEndpoint: endpoint.startsWith('/api/customer-auth'),
+        //         isCustomerRoute: endpoint.startsWith('/api/customer/')
+        //     })
+        // }
 
         const response = await fetch(url, {
             ...options,
@@ -80,6 +82,13 @@ export class ApiClient {
         return this.request<any>('/api/auth/login', {
             method: 'POST',
             body: JSON.stringify({ username, password }),
+        })
+    }
+
+    async googleLogin(token: string) {
+        return this.request<any>('/api/auth/google', {
+            method: 'POST',
+            body: JSON.stringify({ token }),
         })
     }
 
@@ -219,6 +228,15 @@ export class ApiClient {
         return this.request<any>(`/api/customers/${id}`, {
             method: 'DELETE',
         })
+    }
+
+    // Car Models
+    async getCarModels() {
+        return this.request<any>('/api/car-models')
+    }
+
+    async searchCarModels(query: string) {
+        return this.request<any>(`/api/car-models/search?q=${encodeURIComponent(query)}`)
     }
 
     // Parts

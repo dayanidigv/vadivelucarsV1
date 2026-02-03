@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { DollarSign, CreditCard, Activity } from "lucide-react"
 import { api } from "@/lib/api"
 import { BackButton } from "@/components/ui/BackButton"
+import { Separator } from "@radix-ui/react-dropdown-menu"
 
 export default function Reports() {
     const [data, setData] = useState<any[]>([])
@@ -38,6 +39,7 @@ export default function Reports() {
                 <BackButton fallback="/dashboard" />
                 <h1 className="text-3xl font-bold tracking-tight">Financial Reports</h1>
             </div>
+            <Separator />
 
             {/* Quick Stats */}
             <div className="grid gap-4 md:grid-cols-3">

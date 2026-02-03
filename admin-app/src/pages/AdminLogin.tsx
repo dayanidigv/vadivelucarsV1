@@ -1,8 +1,10 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
+import { GoogleLogin } from '@react-oauth/google'
 import { api } from '../lib/api'
 import { useAuth } from '../contexts/AuthContext'
+import { Eye, EyeOff } from 'lucide-react'
 
 export default function AdminLogin() {
   const [credentials, setCredentials] = useState({
@@ -10,6 +12,7 @@ export default function AdminLogin() {
     password: ''
   })
   const [loading, setLoading] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const navigate = useNavigate()
   const { login } = useAuth()
@@ -96,16 +99,29 @@ export default function AdminLogin() {
               <label htmlFor="password" className="sr-only">
                 Password
               </label>
-              <input
-                id="password"
-                name="password"
-                type="password"
-                required
-                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
-                placeholder="Password"
-                value={credentials.password}
-                onChange={handleChange}
-              />
+              <div className="relative">
+                <input
+                  id="password"
+                  name="password"
+                  type={showPassword ? "text" : "password"}
+                  required
+                  className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm pr-10"
+                  placeholder="Password"
+                  value={credentials.password}
+                  onChange={handleChange}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute inset-y-0 right-0 px-3 flex items-center text-gray-400 hover:text-gray-600 focus:outline-none z-20"
+                >
+                  {showPassword ? (
+                    <EyeOff className="h-5 w-5" aria-hidden="true" />
+                  ) : (
+                    <Eye className="h-5 w-5" aria-hidden="true" />
+                  )}
+                </button>
+              </div>
             </div>
           </div>
 
@@ -118,13 +134,48 @@ export default function AdminLogin() {
               {loading ? 'Signing in...' : 'Sign in'}
             </button>
           </div>
-
-          <div className="text-center">
-            <p className="text-sm text-gray-600">
-              For admin access, contact system administrator
-            </p>
-          </div>
         </form>
+
+        <div className="relative">
+          <div className="absolute inset-0 flex items-center">
+            <div className="w-full border-t border-gray-300" />
+          </div>
+          <div className="relative flex justify-center text-sm">
+            <span className="px-2 bg-gray-50 text-gray-500">Or continue with</span>
+          </div>
+        </div>
+
+        <div className="flex justify-center">
+          <GoogleLogin
+            onSuccess={async (credentialResponse) => {
+              try {
+                setLoading(true)
+                const data = await api.googleLogin(credentialResponse.credential!)
+                if (data.success) {
+                  login(data.data.token, data.data.user)
+                  toast.success('Google Login successful!')
+                  navigate('/dashboard')
+                } else {
+                  toast.error(data.message || 'Google Login failed')
+                }
+              } catch (err) {
+                toast.error('Google Login failed. Please try again.')
+              } finally {
+                setLoading(false)
+              }
+            }}
+            onError={() => {
+              toast.error('Google Login Failed')
+            }}
+            useOneTap
+          />
+        </div>
+
+        <div className="text-center">
+          <p className="text-sm text-gray-600">
+            For admin access, contact system administrator
+          </p>
+        </div>
       </div>
     </div>
   )

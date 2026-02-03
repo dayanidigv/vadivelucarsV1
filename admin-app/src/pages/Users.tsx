@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Search, Plus, Edit, Trash2, Key, ToggleLeft, ToggleRight, Users as UsersIcon } from 'lucide-react'
+import { BackButton } from '@/components/ui/BackButton'
 
 interface User {
   id: string
@@ -233,14 +234,18 @@ export default function Users() {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Users Management</h1>
-          <p className="text-gray-600">Manage system users and their permissions</p>
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div className="flex items-center gap-4">
+          <BackButton />
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Users</h1>
+            <p className="text-sm text-muted-foreground">Manage system users</p>
+          </div>
         </div>
+
         <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
           <DialogTrigger asChild>
-            <Button onClick={resetForm}>
+            <Button onClick={resetForm} className="w-full sm:w-auto">
               <Plus className="mr-2 h-4 w-4" />
               Add User
             </Button>
@@ -362,20 +367,20 @@ export default function Users() {
               <p className="mt-2 text-gray-600">Loading users...</p>
             </div>
           ) : (
-            <div className="rounded-md border">
+            <div className="rounded-md border overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       User
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="hidden md:table-cell px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Role
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Status
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="hidden lg:table-cell px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Last Login
                     </th>
                     <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -391,9 +396,15 @@ export default function Users() {
                           <div className="text-sm font-medium text-gray-900">{user.name}</div>
                           <div className="text-sm text-gray-500">{user.email}</div>
                           <div className="text-xs text-gray-400">@{user.username}</div>
+                          {/* Mobile Only Details */}
+                          <div className="md:hidden mt-1 flex flex-wrap gap-2">
+                            <Badge variant="outline" className="text-[10px] px-1 py-0 h-5">
+                              {user.role}
+                            </Badge>
+                          </div>
                         </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      <td className="hidden md:table-cell px-6 py-4 whitespace-nowrap">
                         <Badge className={getRoleBadgeColor(user.role)}>
                           {user.role}
                         </Badge>
@@ -403,7 +414,7 @@ export default function Users() {
                           {user.is_active ? 'Active' : 'Inactive'}
                         </Badge>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      <td className="hidden lg:table-cell px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                         {user.last_login ? new Date(user.last_login).toLocaleDateString() : 'Never'}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
@@ -412,6 +423,7 @@ export default function Users() {
                             variant="outline"
                             size="sm"
                             onClick={() => handleEdit(user)}
+                            className="h-8 w-8 p-0"
                           >
                             <Edit className="h-4 w-4" />
                           </Button>
@@ -419,6 +431,7 @@ export default function Users() {
                             variant="outline"
                             size="sm"
                             onClick={() => confirmResetPassword(user)}
+                            className="h-8 w-8 p-0"
                           >
                             <Key className="h-4 w-4" />
                           </Button>
@@ -426,6 +439,7 @@ export default function Users() {
                             variant="outline"
                             size="sm"
                             onClick={() => confirmToggleStatus(user)}
+                            className="h-8 w-8 p-0"
                           >
                             {user.is_active ? <ToggleLeft className="h-4 w-4" /> : <ToggleRight className="h-4 w-4" />}
                           </Button>
@@ -433,7 +447,7 @@ export default function Users() {
                             variant="outline"
                             size="sm"
                             onClick={() => confirmDelete(user)}
-                            className="text-red-600 hover:text-red-700"
+                            className="text-red-600 hover:text-red-700 h-8 w-8 p-0 border-red-200 hover:bg-red-50"
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>

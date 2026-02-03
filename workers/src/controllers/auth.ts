@@ -7,7 +7,7 @@ import { getSupabaseClient, Env } from '../lib/supabase'
 const auth = new Hono<{ Bindings: Env }>()
 
 // JWT Secret - In production, use environment variable
-const JWT_SECRET = 'vadivelu-cars-secret-key'
+// const JWT_SECRET = 'vadivelu-cars-secret-key'
 
 // Login endpoint
 auth.post('/login', async (c) => {
@@ -42,9 +42,9 @@ auth.post('/login', async (c) => {
 
     // Check if account is locked
     if (user.locked_until && new Date(user.locked_until) > new Date()) {
-      return c.json({ 
-        success: false, 
-        message: 'Account is temporarily locked. Please try again later.' 
+      return c.json({
+        success: false,
+        message: 'Account is temporarily locked. Please try again later.'
       }, 423)
     }
 
@@ -73,8 +73,8 @@ auth.post('/login', async (c) => {
     // Reset login attempts on successful login
     await supabase
       .from('users')
-      .update({ 
-        login_attempts: 0, 
+      .update({
+        login_attempts: 0,
         locked_until: null,
         last_login: new Date().toISOString()
       })
@@ -95,13 +95,12 @@ auth.post('/login', async (c) => {
         user_agent: c.req.header('user-agent')
       })
 
-    // Create JWT token
-    const token = await sign({
+    const jwtToken = await sign({
       userId: user.id,
       username: user.username,
       role: user.role,
       sessionId: sessionToken
-    }, JWT_SECRET)
+    }, c.env.JWT_SECRET || 'vadivelu-cars-secret-key')
 
     // Remove sensitive data
     const { password_hash, ...userWithoutPassword } = user
@@ -110,7 +109,7 @@ auth.post('/login', async (c) => {
       success: true,
       message: 'Login successful',
       data: {
-        token,
+        token: jwtToken,
         user: userWithoutPassword,
         expiresIn: 24 * 60 * 60 // 24 hours in seconds
       }
@@ -118,6 +117,110 @@ auth.post('/login', async (c) => {
 
   } catch (error) {
     console.error('Login error:', error)
+    return c.json({ success: false, message: 'Internal server error' }, 500)
+  }
+})
+
+// Google Login endpoint
+auth.post('/google', async (c) => {
+  try {
+    const { token } = await c.req.json()
+    const supabase = getSupabaseClient(c.env)
+
+    if (!token) {
+      return c.json({ success: false, message: 'Google token is required' }, 400)
+    }
+
+    // Verify Google ID Token
+    const googleResponse = await fetch(`https://oauth2.googleapis.com/tokeninfo?id_token=${token}`)
+
+    if (!googleResponse.ok) {
+      return c.json({ success: false, message: 'Invalid Google token' }, 401)
+    }
+
+    const googleUser = await googleResponse.json() as any
+    const { email, sub: googleId, picture: avatarUrl, name } = googleUser
+
+    if (!email) {
+      return c.json({ success: false, message: 'Google token missing email' }, 400)
+    }
+
+    // Find user by email
+    const { data: user, error } = await supabase
+      .from('users')
+      .select('*')
+      .eq('email', email)
+      .single()
+
+    if (error || !user) {
+      // In this admin app, we do NOT allow auto-registration via Google.
+      // The admin must pre-create the user (even without a password).
+      return c.json({ success: false, message: 'User not found. Please contact an administrator.' }, 401)
+    }
+
+    // Check if user is active
+    if (!user.is_active) {
+      return c.json({ success: false, message: 'Account is deactivated' }, 401)
+    }
+
+    // Update user with Google info if needed (link account)
+    if (user.google_id !== googleId || user.avatar_url !== avatarUrl) {
+      await supabase
+        .from('users')
+        .update({
+          google_id: googleId,
+          avatar_url: avatarUrl,
+          last_login: new Date().toISOString()
+        })
+        .eq('id', user.id)
+    } else {
+      // Just update last login
+      await supabase
+        .from('users')
+        .update({
+          last_login: new Date().toISOString()
+        })
+        .eq('id', user.id)
+    }
+
+    // Create session token
+    const sessionToken = uuidv4()
+    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000) // 24 hours
+
+    // Store session
+    await supabase
+      .from('user_sessions')
+      .insert({
+        user_id: user.id,
+        session_token: sessionToken,
+        expires_at: expiresAt.toISOString(),
+        ip_address: c.req.header('x-forwarded-for') || c.req.header('x-real-ip'),
+        user_agent: c.req.header('user-agent')
+      })
+
+    // Create JWT token
+    const jwtToken = await sign({
+      userId: user.id,
+      username: user.username,
+      role: user.role,
+      sessionId: sessionToken
+    }, c.env.JWT_SECRET || 'vadivelu-cars-secret-key')
+
+    // Remove sensitive data
+    const { password_hash, ...userWithoutPassword } = user
+
+    return c.json({
+      success: true,
+      message: 'Google login successful',
+      data: {
+        token: jwtToken,
+        user: { ...userWithoutPassword, avatar_url: avatarUrl }, // Ensure avatar is returned
+        expiresIn: 24 * 60 * 60
+      }
+    })
+
+  } catch (error) {
+    console.error('Google login error:', error)
     return c.json({ success: false, message: 'Internal server error' }, 500)
   }
 })
@@ -132,9 +235,9 @@ auth.post('/logout', async (c) => {
     }
 
     const token = authHeader.substring(7)
-    
+
     // Verify and decode token
-    const payload = await verify(token, JWT_SECRET, 'HS256').catch(() => null)
+    const payload = await verify(token, c.env.JWT_SECRET || 'vadivelu-cars-secret-key', 'HS256').catch(() => null)
     if (!payload) {
       return c.json({ success: false, message: 'Invalid token' }, 401)
     }
@@ -166,9 +269,9 @@ auth.get('/verify', async (c) => {
     }
 
     const token = authHeader.substring(7)
-    
+
     // Verify and decode token
-    const payload = await verify(token, JWT_SECRET, 'HS256').catch(() => null)
+    const payload = await verify(token, c.env.JWT_SECRET || 'vadivelu-cars-secret-key', 'HS256').catch(() => null)
     if (!payload) {
       return c.json({ success: false, message: 'Invalid token' }, 401)
     }
@@ -227,7 +330,7 @@ auth.post('/change-password', async (c) => {
     }
 
     // Verify token
-    const payload = await verify(token, JWT_SECRET, 'HS256').catch(() => null)
+    const payload = await verify(token, c.env.JWT_SECRET || 'vadivelu-cars-secret-key', 'HS256').catch(() => null)
     if (!payload) {
       return c.json({ success: false, message: 'Invalid token' }, 401)
     }
