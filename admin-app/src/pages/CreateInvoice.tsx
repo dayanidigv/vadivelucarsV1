@@ -47,6 +47,8 @@ import { toast } from "sonner"
 import { Combobox } from "@/components/ui/combobox"
 import RecentlyUsedParts from "@/components/invoice/RecentlyUsedParts"
 import { Textarea } from "@/components/ui/textarea"
+import { CreateCustomerDialog } from "@/components/customer/CreateCustomerDialog"
+import type { Customer } from "@/types"
 
 type InvoiceFormValues = {
     customer_id: string
@@ -486,31 +488,54 @@ export default function CreateInvoice() {
                                 <Label className="flex items-center gap-1 text-sm">
                                     Customer <span className="text-red-500">*</span>
                                 </Label>
-                                <Combobox
-                                    placeholder="Search customer..."
-                                    searchPlaceholder="Type to search..."
-                                    onSearch={setCustomerSearch}
-                                    value={watch("customer_id")}
-                                    selectedLabel={escape(selectedCustomer?.name)}
-                                    options={(searchResults?.data?.customers || []).map((c: any) => ({
-                                        label: `${c.name} - ${c.phone || "No phone"}`,
-                                        value: c.id
-                                    }))}
-                                    onChange={(val) => {
-                                        const customer = searchResults?.data?.customers?.find((c: any) => c.id === val)
-                                        if (customer) {
-                                            setSelectedCustomer(customer)
-                                            setValue("customer_id", customer.id)
-                                            if (customer.vehicles && customer.vehicles.length > 0) {
-                                                setValue("vehicle_id", customer.vehicles[0].id)
-                                                setSelectedVehicle(customer.vehicles[0])
-                                                setValue("mileage", customer.vehicles[0].current_mileage || 0)
+                                <div className="flex gap-2">
+                                    <div className="flex-1">
+                                        <Combobox
+                                            placeholder="Search customer..."
+                                            searchPlaceholder="Type to search..."
+                                            onSearch={setCustomerSearch}
+                                            value={watch("customer_id")}
+                                            selectedLabel={escape(selectedCustomer?.name)}
+                                            options={(searchResults?.data?.customers || []).map((c: any) => ({
+                                                label: `${c.name} - ${c.phone || "No phone"}`,
+                                                value: c.id
+                                            }))}
+                                            onChange={(val) => {
+                                                const customer = searchResults?.data?.customers?.find((c: any) => c.id === val)
+                                                if (customer) {
+                                                    setSelectedCustomer(customer)
+                                                    setValue("customer_id", customer.id)
+                                                    if (customer.vehicles && customer.vehicles.length > 0) {
+                                                        setValue("vehicle_id", customer.vehicles[0].id)
+                                                        setSelectedVehicle(customer.vehicles[0])
+                                                        setValue("mileage", customer.vehicles[0].current_mileage || 0)
+                                                    }
+                                                }
+                                            }}
+                                            isLoading={isLoadingCustomers}
+                                            emptyMessage="Start typing to search customers"
+                                        />
+                                    </div>
+                                    <CreateCustomerDialog
+                                        mode="drawer"
+                                        onSuccess={(newCustomer: Customer) => {
+                                            setCustomerSearch("")
+                                            setSelectedCustomer(newCustomer)
+                                            setValue("customer_id", newCustomer.id, { shouldValidate: true })
+                                            if (newCustomer.vehicles && newCustomer.vehicles.length > 0) {
+                                                const vehicle = newCustomer.vehicles[0]
+                                                setValue("vehicle_id", vehicle.id, { shouldValidate: true })
+                                                setSelectedVehicle(vehicle)
+                                                setValue("mileage", vehicle.current_mileage || 0, { shouldValidate: true })
                                             }
+                                        }}
+                                        trigger={
+                                            <Button type="button" variant="outline" size="icon" className="shrink-0 h-10 w-10 border-blue-200 text-blue-600 hover:bg-blue-50" title="Add New Customer">
+                                                <Plus className="h-4 w-4" />
+                                            </Button>
                                         }
-                                    }}
-                                    isLoading={isLoadingCustomers}
-                                    emptyMessage="Start typing to search customers"
-                                />
+                                    />
+                                </div>
                             </div>
 
                             {selectedCustomer && (

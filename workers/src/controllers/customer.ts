@@ -136,9 +136,20 @@ export async function create(c: Context) {
         }
     }
 
+    // Fetch the full customer object with vehicles to return
+    const { data: fullCustomer, error: fetchError } = await supabase
+        .from('customers')
+        .select('*, vehicles(*)')
+        .eq('id', customer.id)
+        .single()
+
+    if (fetchError) {
+        return c.json({ success: true, data: customer, message: 'Customer created, but failed to fetch full details' })
+    }
+
     return c.json({
         success: true,
-        data: customer,
+        data: fullCustomer,
         message: 'Customer created successfully'
     })
 }
@@ -195,9 +206,20 @@ export async function update(c: Context) {
         }
     }
 
+    // Fetch the full customer object with vehicles to return
+    const { data: fullCustomer, error: fetchError } = await supabase
+        .from('customers')
+        .select('*, vehicles(*)')
+        .eq('id', id)
+        .single()
+
+    if (fetchError) {
+        return c.json({ success: true, data: customer, message: 'Customer updated, but failed to fetch full details' })
+    }
+
     return c.json({
         success: true,
-        data: customer,
+        data: fullCustomer,
         message: 'Customer updated successfully'
     })
 }
