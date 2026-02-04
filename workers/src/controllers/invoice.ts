@@ -139,6 +139,10 @@ export async function getLastByVehicle(c: Context) {
         .from('invoices')
         .select(`
       id,
+      created_at,
+      invoice_date,
+      mileage,
+      grand_total,
       items:invoice_items(*)
     `)
         .eq('vehicle_id', vehicleId)
@@ -162,31 +166,7 @@ export async function create(c: Context) {
     const body = await c.req.json()
     const supabase = getSupabaseClient(c.env)
 
-    // Autosave non-part items as parts (both parts and labor items)
-    for (const item of body.items) {
-        if (!item.part_id) {
-            // Check if part already exists
-            const { data: existingPart } = await supabase
-                .from('parts_catalog')
-                .select('id')
-                .ilike('name', item.description)
-                .single()
-
-            if (!existingPart) {
-                // Create new part (for both part and labor items)
-                await supabase
-                    .from('parts_catalog')
-                    .insert({
-                        name: item.description,
-                        category: item.category || 'General',
-                        default_rate: item.rate,
-                        unit: item.unit || 'No'
-                    })
-            }
-        }
-    }
-
-    // Create invoice
+    // 1. Create invoice header first
     const { data: invoice, error: invoiceError } = await supabase
         .from('invoices')
         .insert({
@@ -200,7 +180,7 @@ export async function create(c: Context) {
             notes: body.notes,
             mechanic_name: body.mechanic_name,
             invoice_date: body.invoice_date,
-            grand_total: 0 // Placeholder, will update
+            grand_total: 0 // Placeholder
         })
         .select()
         .single()
@@ -209,43 +189,78 @@ export async function create(c: Context) {
         return c.json({ error: invoiceError.message }, 400)
     }
 
-    // Create invoice items
-    // Ensure items have all required fields
-    const items = body.items.map((item: any) => ({
-        invoice_id: invoice.id,
-        part_id: item.part_id,
-        description: item.description,
-        category: item.category,
-        quantity: item.quantity,
-        unit: item.unit || 'No',
-        rate: item.rate,
-        amount: item.quantity * item.rate,
-        item_type: item.item_type || 'part'
-    }))
+    // 2. Link items to parts and create new parts as needed
+    const processedItems = []
+    const items = body.items || []
 
-    const { error: itemsError } = await supabase
-        .from('invoice_items')
-        .insert(items)
+    for (const item of items) {
+        let partId = (item.part_id && item.part_id !== "") ? item.part_id : null
 
-    if (itemsError) {
-        // Rollback
-        await supabase.from('invoices').delete().eq('id', invoice.id)
-        return c.json({ error: itemsError.message }, 400)
+        if (!partId) {
+            const { data: existingPart } = await supabase
+                .from('parts_catalog')
+                .select('id')
+                .ilike('name', item.description)
+                .is('is_active', true)
+                .maybeSingle()
+
+            if (existingPart) {
+                partId = existingPart.id
+            } else {
+                const { data: newPart, error: partError } = await supabase
+                    .from('parts_catalog')
+                    .insert({
+                        name: item.description,
+                        category: item.category || 'General',
+                        default_rate: Number(item.rate) || 0,
+                        unit: item.unit || 'No'
+                    })
+                    .select('id')
+                    .single()
+
+                if (!partError && newPart) {
+                    partId = newPart.id
+                }
+            }
+        }
+
+        processedItems.push({
+            invoice_id: invoice.id,
+            part_id: partId,
+            description: item.description || 'No description',
+            category: item.category || 'General',
+            quantity: Number(item.quantity) || 0,
+            unit: item.unit || 'No',
+            rate: Number(item.rate) || 0,
+            amount: (Number(item.quantity) || 0) * (Number(item.rate) || 0),
+            item_type: item.item_type || 'part'
+        })
     }
 
-    // Calculate totals
-    const partsTotal = items
+    // 3. Insert invoice items
+    const { error: itemsError } = await supabase
+        .from('invoice_items')
+        .insert(processedItems)
+
+    if (itemsError) {
+        console.error("Error inserting items:", itemsError)
+        await supabase.from('invoices').delete().eq('id', invoice.id)
+        return c.json({ error: `Failed to save invoice items: ${itemsError.message}`, details: itemsError }, 400)
+    }
+
+    // 4. Calculate totals
+    const partsTotal = processedItems
         .filter((i: any) => i.item_type === 'part')
         .reduce((sum: number, i: any) => sum + i.amount, 0)
 
-    const laborTotal = items
+    const laborTotal = processedItems
         .filter((i: any) => i.item_type === 'labor')
         .reduce((sum: number, i: any) => sum + i.amount, 0)
 
     const grandTotal = partsTotal + laborTotal - (body.discount_amount || 0)
     const balanceAmount = grandTotal - (body.paid_amount || 0)
 
-    // Update invoice with totals
+    // 5. Update invoice with totals
     const { data: updatedInvoice, error: updateError } = await supabase
         .from('invoices')
         .update({
@@ -260,13 +275,11 @@ export async function create(c: Context) {
 
     if (updateError) {
         console.error("Error updating invoice totals:", updateError)
-        // We don't delete here because data is mostly there, but totals are wrong.
-        // User can edit later.
     }
 
     return c.json({
         success: true,
-        data: updatedInvoice,
+        data: updatedInvoice || invoice,
         message: 'Invoice created successfully'
     })
 }
@@ -276,36 +289,9 @@ export async function update(c: Context) {
     const body = await c.req.json()
     const supabase = getSupabaseClient(c.env)
 
-    // Autosave non-part items as parts (both parts and labor items)
-    if (body.items && Array.isArray(body.items)) {
-        for (const item of body.items) {
-            if (!item.part_id) {
-                // Check if part already exists
-                const { data: existingPart } = await supabase
-                    .from('parts_catalog')
-                    .select('id')
-                    .ilike('name', item.description)
-                    .single()
-
-                if (!existingPart) {
-                    // Create new part (for both part and labor items)
-                    await supabase
-                        .from('parts_catalog')
-                        .insert({
-                            name: item.description,
-                            category: item.category || 'General',
-                            default_rate: item.rate,
-                            unit: item.unit || 'No'
-                        })
-                }
-            }
-        }
-    }
-
-    // Separate items from invoice data
     const { items, ...invoiceData } = body
 
-    // 1. Update invoice details (excluding items)
+    // 1. Update invoice details
     const { data: invoice, error: invoiceError } = await supabase
         .from('invoices')
         .update({
@@ -330,7 +316,6 @@ export async function update(c: Context) {
 
     // 2. Handle Items: Delete existing and insert new
     if (items && Array.isArray(items)) {
-        // Delete existing items
         const { error: deleteError } = await supabase
             .from('invoice_items')
             .delete()
@@ -341,42 +326,72 @@ export async function update(c: Context) {
             return c.json({ error: "Failed to update items" }, 400)
         }
 
-        // Prepare new items
-        const newItems = items.map((item: any) => ({
-            invoice_id: id,
-            part_id: item.part_id,
-            description: item.description,
-            category: item.category,
-            quantity: item.quantity,
-            unit: item.unit || 'No',
-            rate: item.rate,
-            amount: item.quantity * item.rate,
-            item_type: item.item_type || 'part'
-        }))
+        const processedItems = []
+        for (const item of items) {
+            let partId = (item.part_id && item.part_id !== "") ? item.part_id : null
 
-        // Insert new items
+            if (!partId) {
+                const { data: existingPart } = await supabase
+                    .from('parts_catalog')
+                    .select('id')
+                    .ilike('name', item.description)
+                    .is('is_active', true)
+                    .maybeSingle()
+
+                if (existingPart) {
+                    partId = existingPart.id
+                } else {
+                    const { data: newPart, error: partError } = await supabase
+                        .from('parts_catalog')
+                        .insert({
+                            name: item.description,
+                            category: item.category || 'General',
+                            default_rate: Number(item.rate) || 0,
+                            unit: item.unit || 'No'
+                        })
+                        .select('id')
+                        .single()
+
+                    if (!partError && newPart) {
+                        partId = newPart.id
+                    }
+                }
+            }
+
+            processedItems.push({
+                invoice_id: id,
+                part_id: partId,
+                description: item.description || 'No description',
+                category: item.category || 'General',
+                quantity: Number(item.quantity) || 0,
+                unit: item.unit || 'No',
+                rate: Number(item.rate) || 0,
+                amount: (Number(item.quantity) || 0) * (Number(item.rate) || 0),
+                item_type: item.item_type || 'part'
+            })
+        }
+
         const { error: insertError } = await supabase
             .from('invoice_items')
-            .insert(newItems)
+            .insert(processedItems)
 
         if (insertError) {
             console.error("Error inserting new items:", insertError)
-            return c.json({ error: "Failed to save new items" }, 400)
+            return c.json({ error: `Failed to save new items: ${insertError.message}`, details: insertError }, 400)
         }
 
         // 3. Recalculate Totals
-        const partsTotal = newItems
+        const partsTotal = processedItems
             .filter((i: any) => i.item_type === 'part')
             .reduce((sum: number, i: any) => sum + i.amount, 0)
 
-        const laborTotal = newItems
+        const laborTotal = processedItems
             .filter((i: any) => i.item_type === 'labor')
             .reduce((sum: number, i: any) => sum + i.amount, 0)
 
         const grandTotal = partsTotal + laborTotal - (invoiceData.discount_amount || 0)
         const balanceAmount = grandTotal - (invoiceData.paid_amount || 0)
 
-        // Update invoice with totals
         const { data: updatedInvoice, error: updateError } = await supabase
             .from('invoices')
             .update({
@@ -393,7 +408,7 @@ export async function update(c: Context) {
             console.error("Error updating totals:", updateError)
         }
 
-        return c.json({ success: true, data: updatedInvoice })
+        return c.json({ success: true, data: updatedInvoice || invoice })
     }
 
     return c.json({ success: true, data: invoice })

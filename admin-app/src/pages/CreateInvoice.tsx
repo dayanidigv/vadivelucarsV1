@@ -66,6 +66,7 @@ type InvoiceFormValues = {
         item_type: 'part' | 'labor'
         quantity: number
         rate: number
+        unit_price?: number
         unit: string
         amount: number
     }[]
@@ -143,7 +144,8 @@ export default function CreateInvoice() {
                 items: (invoice.items || []).map((i: any) => ({
                     ...i,
                     quantity: Number(i.quantity),
-                    rate: Number(i.rate),
+                    rate: Number(i.rate || i.unit_price || 0),
+                    unit_price: Number(i.rate || i.unit_price || 0),
                     amount: Number(i.amount)
                 }))
             })
@@ -312,13 +314,19 @@ export default function CreateInvoice() {
             const formattedData = {
                 ...data,
                 idempotencyKey: crypto.randomUUID(),
-                items: data.items.map(i => ({
-                    ...i,
-                    quantity: Number(i.quantity),
-                    rate: Number(i.rate),
-                    unit_price: Number(i.rate),
-                    amount: Number(i.quantity) * Number(i.rate)
-                }))
+                total_amount: subtotal,
+                grand_total: grandTotal,
+                balance_amount: balance,
+                items: data.items.map(i => {
+                    const price = Number(i.rate || 0);
+                    return {
+                        ...i,
+                        quantity: Number(i.quantity),
+                        rate: price,
+                        unit_price: price,
+                        amount: Number(i.quantity) * price
+                    };
+                })
             }
 
             let response: any

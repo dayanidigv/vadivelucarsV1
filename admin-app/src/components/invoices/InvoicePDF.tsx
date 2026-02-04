@@ -408,7 +408,7 @@ export default function InvoicePDF({ invoice }: { invoice: Invoice }) {
                         <View style={styles.container}>
                             {/* Top Label */}
                             <Text style={styles.topLabel}>
-                                LABOUR / CASH BILL {!isFirstPage && `(Page ${pageIndex + 1} of ${totalPages})`}
+                                LABOUR / CASH BILL {!isFirstPage ? `(Page ${pageIndex + 1} of ${totalPages})` : ''}
                             </Text>
 
                             {/* Header - Full on first page, simplified on continuation */}
@@ -538,7 +538,7 @@ export default function InvoicePDF({ invoice }: { invoice: Invoice }) {
                                             <Text style={{ fontWeight: 'bold' }}>{subtotal.toFixed(2)}</Text>
                                         </View>
                                     </View>
-                                    {discount > 0 && (
+                                    {discount > 0 ? (
                                         <View style={styles.totalRow}>
                                             <View style={styles.totalLabelBox}>
                                                 <Text style={{ fontWeight: 'bold' }}>DISCOUNT</Text>
@@ -547,7 +547,7 @@ export default function InvoicePDF({ invoice }: { invoice: Invoice }) {
                                                 <Text style={{ fontWeight: 'bold' }}>- {discount.toFixed(2)}</Text>
                                             </View>
                                         </View>
-                                    )}
+                                    ) : null}
                                     <View style={styles.totalRow}>
                                         <View style={styles.totalLabelBox}>
                                             <Text style={{ fontWeight: 'bold' }}>GRAND TOTAL</Text>
@@ -571,7 +571,7 @@ export default function InvoicePDF({ invoice }: { invoice: Invoice }) {
                                                 </View>
                                             )} */}
 
-                                            {invoice.notes && (
+                                            {!!invoice.notes && (
                                                 <View style={styles.notesBox}>
                                                     <Text style={styles.notesLabel}>Notes:</Text>
                                                     <Text style={styles.notesText}>{sanitizeText(invoice.notes)}</Text>

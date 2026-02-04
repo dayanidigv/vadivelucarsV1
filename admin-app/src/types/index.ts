@@ -38,13 +38,13 @@ export interface InvoiceItem {
     invoice_id?: string
     part_id?: string
     description: string
-    category: string // Required in schema
+    category: string
     quantity: number
-    unit?: string // Optional in schema (not present)
-    rate?: number // Legacy/UI alias
-    unit_price: number // Required in schema
+    unit?: string
+    rate: number
+    unit_price: number // Keep both as required for consistency across UI/API
     amount: number
-    item_type?: 'part' | 'labor' // Optional in schema (not present)
+    item_type: 'part' | 'labor'
 }
 
 export interface Invoice {
@@ -76,15 +76,18 @@ export interface CreateInvoiceData {
     customer_id: string
     vehicle_id: string
     mileage?: number
-    items: InvoiceItem[]
+    items: Omit<InvoiceItem, 'id' | 'invoice_id'>[]
     discount_amount?: number
     payment_status?: 'paid' | 'unpaid' | 'partial' | 'pending'
     payment_method?: string
     paid_amount?: number
+    balance_amount?: number // Added for explicit total tracking
     notes?: string
     mechanic_name?: string
     invoice_date?: string
     idempotencyKey?: string
+    total_amount?: number // For frontend calc
+    grand_total?: number // For DB align
 }
 
 export interface CreateCustomerInput {

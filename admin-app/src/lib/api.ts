@@ -183,6 +183,10 @@ export class ApiClient {
         })
     }
 
+    async getLastInvoiceByVehicle(vehicleId: string) {
+        return this.request<ApiResponse<Invoice>>(`/api/invoices/last?vehicle_id=${vehicleId}`)
+    }
+
     async deleteInvoice(id: string) {
         return this.request<any>(`/api/invoices/${id}`, {
             method: 'DELETE',

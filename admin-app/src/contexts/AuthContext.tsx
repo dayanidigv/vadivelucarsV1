@@ -60,10 +60,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
         setToken(storedToken)
         setUser(response.data.user)
 
-        // Ensure token is in sessionStorage for future use
+        // Ensure token is in both storage locations for multi-tab support
         sessionStorage.setItem('token', storedToken)
-        // Cleanup localStorage token if it was there
-        localStorage.removeItem('token')
+        localStorage.setItem('token', storedToken)
 
         // Store encrypted user data
         const encryptedUser = await encryptData(JSON.stringify(response.data.user))
@@ -99,10 +98,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
     //   username: userData.username
     // })
 
-    // Store token in sessionStorage (not accessible across different tabs/windows)
+    // Store token in both storage locations for multi-tab support
     sessionStorage.setItem('token', newToken)
-    // Clear old token if any
-    localStorage.removeItem('token')
+    localStorage.setItem('token', newToken)
 
     // Encrypt user data before storing in localStorage
     const encryptedUser = await encryptData(JSON.stringify(userData))
