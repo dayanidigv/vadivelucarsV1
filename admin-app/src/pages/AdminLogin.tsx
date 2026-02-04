@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useState, useEffect } from 'react'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { toast } from 'sonner'
 import { GoogleLogin } from '@react-oauth/google'
 import { api } from '../lib/api'
@@ -14,8 +14,18 @@ export default function AdminLogin() {
   const [loading, setLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [oauthState] = useState(() => crypto.randomUUID())
+  const [nonce] = useState(() => crypto.randomUUID())
   const navigate = useNavigate()
-  const { login } = useAuth()
+  const { login, isAuthenticated, isLoading, user } = useAuth()
+  const location = useLocation()
+
+  useEffect(() => {
+    if (isAuthenticated && user && ['admin', 'manager'].includes(user.role)) {
+      const from = (location.state as any)?.from?.pathname || '/dashboard'
+      navigate(from, { replace: true })
+    }
+  }, [isAuthenticated, user, navigate, location])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -52,8 +62,16 @@ export default function AdminLogin() {
     if (error) setError(null)
   }
 
-  const [oauthState] = useState(() => crypto.randomUUID())
-  const [nonce] = useState(() => crypto.randomUUID())
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin mx-auto"></div>
+          <p className="mt-4 text-gray-600 font-medium">Checking session...</p>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
