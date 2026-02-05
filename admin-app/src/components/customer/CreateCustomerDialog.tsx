@@ -12,6 +12,8 @@ import {
     DialogTitle,
     DialogTrigger,
 } from "@/components/ui/dialog"
+import { useAuth } from "@/contexts/AuthContext"
+import { auditLogger } from "@/lib/audit"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Plus, Loader2, Trash2 } from "lucide-react"
@@ -47,7 +49,9 @@ export function CreateCustomerDialog({
     const createCustomer = useCreateCustomer()
     const updateCustomer = useUpdateCustomer()
     const { data: carModels } = useCarModels()
+    const { data: carModels } = useCarModels()
     const createCarModel = useCreateCarModel()
+    const { user: currentUser } = useAuth()
 
     // Handle controlled vs uncontrolled state
     const isOpen = controlledOpen !== undefined ? controlledOpen : open
@@ -174,6 +178,14 @@ export function CreateCustomerDialog({
                     onSuccess: () => {
                         setIsOpen(false)
                         toast.success("Customer updated successfully")
+                        auditLogger.log({
+                            action: 'UPDATE_CUSTOMER',
+                            resource: 'customer',
+                            resourceId: customerToEdit.id,
+                            performedBy: currentUser?.username || 'unknown',
+                            severity: 'medium',
+                            changes: cleanData
+                        })
                         reset()
                     },
                     onError: (error: Error) => {
@@ -187,6 +199,15 @@ export function CreateCustomerDialog({
                     onSuccess: (response: any) => {
                         setIsOpen(false)
                         toast.success("Customer created successfully")
+                        const newCustomer = response.data
+                        auditLogger.log({
+                            action: 'CREATE_CUSTOMER',
+                            resource: 'customer',
+                            resourceId: newCustomer?.id || 'unknown',
+                            performedBy: currentUser?.username || 'unknown',
+                            severity: 'medium',
+                            changes: cleanData
+                        })
                         reset()
                         if (onSuccess && response.data) {
                             onSuccess(response.data)
