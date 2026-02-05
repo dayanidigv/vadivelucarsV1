@@ -49,7 +49,6 @@ export function CreateCustomerDialog({
     const createCustomer = useCreateCustomer()
     const updateCustomer = useUpdateCustomer()
     const { data: carModels } = useCarModels()
-    const { data: carModels } = useCarModels()
     const createCarModel = useCreateCarModel()
     const { user: currentUser } = useAuth()
 
