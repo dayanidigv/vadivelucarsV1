@@ -2,7 +2,7 @@
 import { useState, useEffect, useMemo } from "react"
 import { useForm, useFieldArray } from "react-hook-form"
 import { useCreateCustomer, useUpdateCustomer } from "@/hooks/useCustomers"
-import { useCarModels } from "@/hooks/useCarModels"
+import { useCarModels, useCreateCarModel } from "@/hooks/useCarModels"
 import type { Customer, CreateCustomerInput, CarModel } from "@/types"
 import { Button } from "@/components/ui/button"
 import {
@@ -47,6 +47,7 @@ export function CreateCustomerDialog({
     const createCustomer = useCreateCustomer()
     const updateCustomer = useUpdateCustomer()
     const { data: carModels } = useCarModels()
+    const createCarModel = useCreateCarModel()
 
     // Handle controlled vs uncontrolled state
     const isOpen = controlledOpen !== undefined ? controlledOpen : open
@@ -136,30 +137,65 @@ export function CreateCustomerDialog({
             }))
         }
 
-        if (isEditMode && customerToEdit) {
-            updateCustomer.mutate({ id: customerToEdit.id, data: cleanData }, {
-                onSuccess: () => {
-                    setIsOpen(false)
-                    toast.success("Customer updated successfully")
-                    reset()
-                },
-                onError: (error: Error) => {
-                    toast.error(error.message || "Failed to update customer")
+        // Auto-save new car models
+        const saveNewModels = async () => {
+            const existingModels = carModels || []
+            const promises: Promise<any>[] = []
+
+            cleanData.vehicles?.forEach(vehicle => {
+                if (vehicle.make && vehicle.model) {
+                    const exists = existingModels.some(
+                        m => m.make.toLowerCase() === vehicle.make?.toLowerCase() &&
+                            m.model.toLowerCase() === vehicle.model?.toLowerCase()
+                    )
+
+                    if (!exists) {
+                        promises.push(createCarModel.mutateAsync({
+                            make: vehicle.make,
+                            model: vehicle.model
+                        }))
+                    }
                 }
             })
-        } else {
-            createCustomer.mutate(cleanData, {
-                onSuccess: (response: any) => {
-                    setIsOpen(false)
-                    toast.success("Customer created successfully")
-                    reset()
-                    if (onSuccess && response.data) {
-                        onSuccess(response.data)
-                    }
-                },
-                onError: (error: Error) => {
-                    toast.error(error.message || "Failed to create customer")
+
+            if (promises.length > 0) {
+                try {
+                    await Promise.all(promises)
+                } catch (error) {
+                    console.error("Failed to auto-save vehicle models:", error)
+                    // We don't block customer creation if model saving fails
                 }
+            }
+        }
+
+        if (isEditMode && customerToEdit) {
+            saveNewModels().then(() => {
+                updateCustomer.mutate({ id: customerToEdit.id, data: cleanData }, {
+                    onSuccess: () => {
+                        setIsOpen(false)
+                        toast.success("Customer updated successfully")
+                        reset()
+                    },
+                    onError: (error: Error) => {
+                        toast.error(error.message || "Failed to update customer")
+                    }
+                })
+            })
+        } else {
+            saveNewModels().then(() => {
+                createCustomer.mutate(cleanData, {
+                    onSuccess: (response: any) => {
+                        setIsOpen(false)
+                        toast.success("Customer created successfully")
+                        reset()
+                        if (onSuccess && response.data) {
+                            onSuccess(response.data)
+                        }
+                    },
+                    onError: (error: Error) => {
+                        toast.error(error.message || "Failed to create customer")
+                    }
+                })
             })
         }
     }
@@ -259,6 +295,7 @@ export function CreateCustomerDialog({
                                             setValue(`vehicles.${index}.model`, "") // Reset model when make changes
                                         }}
                                         className="w-full"
+                                        creatable
                                     />
                                 </div>
                             </div>
@@ -274,6 +311,7 @@ export function CreateCustomerDialog({
                                         onChange={(val) => setValue(`vehicles.${index}.model`, val)}
                                         disabled={!watchedVehicles[index]?.make}
                                         className="w-full"
+                                        creatable
                                     />
                                 </div>
                                 <div className="space-y-2">

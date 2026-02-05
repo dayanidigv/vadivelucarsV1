@@ -235,6 +235,13 @@ export class ApiClient {
         return this.request<ApiResponse<CarModel[]>>(`/api/car-models/search?q=${encodeURIComponent(query)}`)
     }
 
+    async createCarModel(data: { make: string, model: string, type?: string }) {
+        return this.request<ApiResponse<CarModel>>('/api/car-models', {
+            method: 'POST',
+            body: JSON.stringify(data),
+        })
+    }
+
     // Parts
     async getParts(category?: string, page = 1, limit = 20) {
         let url = '/api/parts'

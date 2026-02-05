@@ -1,5 +1,5 @@
 import * as React from "react"
-import { Check, ChevronsUpDown, Loader2, Search } from "lucide-react"
+import { Check, ChevronsUpDown, Loader2, Search, Plus } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import {
@@ -33,6 +33,7 @@ interface ComboboxProps {
   isLoading?: boolean
   disabled?: boolean
   className?: string
+  creatable?: boolean
 }
 
 export function Combobox({
@@ -47,6 +48,7 @@ export function Combobox({
   isLoading = false,
   disabled = false,
   className,
+  creatable = false,
 }: ComboboxProps) {
   const [open, setOpen] = React.useState(false)
   const [searchQuery, setSearchQuery] = React.useState("")
@@ -69,7 +71,7 @@ export function Combobox({
   // Get display label
   const displayLabel = selectedLabel ||
     options.find((option) => option.value === value)?.label ||
-    placeholder
+    (creatable && value ? value : placeholder)
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -90,7 +92,7 @@ export function Combobox({
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-full p-0" align="start">
-        <Command shouldFilter={false}>
+        <Command shouldFilter={!onSearch}>
           <div className="flex items-center border-b px-3">
             {/* <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" /> */}
             <CommandInput
@@ -146,10 +148,26 @@ export function Combobox({
                 ))}
               </CommandGroup>
             )}
+            {creatable && searchQuery && !options.some(o => o.label.toLowerCase() === searchQuery.toLowerCase()) && (
+              <CommandGroup>
+                <CommandItem
+                  value={searchQuery}
+                  onSelect={() => {
+                    onChange(searchQuery)
+                    setOpen(false)
+                    setSearchQuery("")
+                  }}
+                  className="cursor-pointer font-medium text-blue-600"
+                >
+                  <Plus className="mr-2 h-4 w-4" />
+                  Create "{searchQuery}"
+                </CommandItem>
+              </CommandGroup>
+            )}
           </CommandList>
         </Command>
       </PopoverContent>
-    </Popover>
+    </Popover >
   )
 }
 
