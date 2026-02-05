@@ -54,6 +54,10 @@ import { useState, useMemo } from "react"
 import { useInvoices, useDeleteInvoice } from "@/hooks/useInvoices"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import type { Invoice } from "@/types"
+import { pdf } from "@react-pdf/renderer"
+import InvoicePDF from "@/components/invoices/InvoicePDF"
+import { toast } from "sonner"
+import { api } from "@/lib/api"
 
 export function InvoiceList() {
     // State
@@ -65,6 +69,33 @@ export function InvoiceList() {
     // Data Fetching
     const { data: invoiceData, isLoading, error } = useInvoices(page, limit)
     const deleteInvoice = useDeleteInvoice()
+
+    // Handlers
+    const handleDownloadPDF = async (invoice: Invoice) => {
+        try {
+            // Fetch full invoice details to ensure we have items
+            const response = await api.getInvoice(String(invoice.id));
+            if (!response || !response.data) {
+                toast.error("Failed to load invoice details");
+                return;
+            }
+            const fullInvoice = response.data;
+
+            const blob = await pdf(<InvoicePDF invoice={fullInvoice} />).toBlob()
+            const url = URL.createObjectURL(blob)
+            const link = document.createElement('a')
+            link.href = url
+            link.download = `Invoice-${fullInvoice.customer?.name || 'Unknown'}-${fullInvoice.invoice_number}.pdf`
+            document.body.appendChild(link)
+            link.click()
+            document.body.removeChild(link)
+            URL.revokeObjectURL(url)
+            toast.success("Invoice downloaded successfully")
+        } catch (error) {
+            console.error("Error downloading PDF:", error)
+            toast.error("Failed to download invoice")
+        }
+    }
 
     // Derived Data
     const invoices = invoiceData?.data || []
@@ -385,7 +416,7 @@ export function InvoiceList() {
                                                                 <Printer className="mr-2 h-4 w-4" />
                                                                 Print Invoice
                                                             </DropdownMenuItem>
-                                                            <DropdownMenuItem>
+                                                            <DropdownMenuItem onClick={() => handleDownloadPDF(invoice)}>
                                                                 <Download className="mr-2 h-4 w-4" />
                                                                 Download PDF
                                                             </DropdownMenuItem>
