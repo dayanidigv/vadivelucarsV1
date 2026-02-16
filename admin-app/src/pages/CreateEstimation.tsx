@@ -413,7 +413,7 @@ export default function CreateEstimation() {
                             <Button
                                 variant="link"
                                 className="p-0 h-auto text-purple-700 underline"
-                                onClick={() => navigate(`/invoices/${existingEstimation.data.converted_invoice_id}`)}
+                                onClick={() => navigate(`/invoices/${existingEstimation?.data?.converted_invoice_id}`)}
                             >
                                 View Invoice
                             </Button>
