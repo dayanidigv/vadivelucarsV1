@@ -12,6 +12,8 @@ import * as customerVehicleController from './controllers/customerVehicle'
 import * as customerFeedbackController from './controllers/customerFeedback'
 import * as carModelController from './controllers/carModel'
 import * as auditLogController from './controllers/auditLog'
+import * as estimationController from './controllers/estimation'
+import * as customerEstimationController from './controllers/customerEstimation'
 import { Env } from './lib/supabase'
 
 // Define Bindings to include Env
@@ -28,6 +30,7 @@ router.route('/customer-auth', customerAuthController.customerAuth)
 
 // Customer-specific routes (protected by customer auth)
 router.route('/customer/invoices', customerInvoiceController.customerInvoices)
+router.route('/customer/estimations', customerEstimationController.customerEstimations)
 router.get('/customer/profile', customerProfileController.getProfile)
 router.put('/customer/profile', customerProfileController.updateProfile)
 router.post('/customer/profile/send-verification', customerProfileController.sendPhoneVerification)
@@ -42,8 +45,9 @@ router.get('/customer/feedback/history', customerFeedbackController.getFeedbackH
 // Test route
 router.get('/customer/test', (c) => c.json({ success: true, message: 'Test route working' }))
 
-// Shared invoice print endpoint (accessible by both admin and customer)
+// Shared print endpoints (accessible by both admin and customer)
 router.get('/invoices/:id/print', invoiceController.print)
+router.get('/estimations/:id/print', estimationController.print)
 
 // Users Management
 router.get('/users', userController.list)
@@ -53,6 +57,15 @@ router.put('/users/:id', userController.update)
 router.delete('/users/:id', userController.remove)
 router.post('/users/:id/reset-password', userController.resetPassword)
 router.post('/users/:id/toggle-status', userController.toggleStatus)
+
+// Estimations
+router.get('/estimations', estimationController.list)
+router.get('/estimations/:id', estimationController.get)
+router.post('/estimations', estimationController.create)
+router.put('/estimations/:id', estimationController.update)
+router.delete('/estimations/:id', estimationController.remove)
+router.put('/estimations/:id/status', estimationController.updateStatus)
+router.post('/estimations/:id/convert', estimationController.convertToInvoice)
 
 // Invoices
 router.get('/invoices', invoiceController.list)

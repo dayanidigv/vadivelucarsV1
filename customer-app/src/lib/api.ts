@@ -147,6 +147,19 @@ export class ApiClient {
   async getFeedbackHistory() {
     return this.request<any>('/api/customer/feedback/history')
   }
+
+  // Customer estimations
+  async getCustomerEstimations(page = 1, limit = 20) {
+    return this.request<any>(`/api/customer/estimations?page=${page}&limit=${limit}`)
+  }
+
+  async getCustomerEstimation(id: string) {
+    return this.request<any>(`/api/customer/estimations/${id}`)
+  }
+
+  async getEstimationForPrint(id: string) {
+    return this.request<any>(`/api/estimations/${id}/print`)
+  }
 }
 
 export const api = new ApiClient(API_URL)

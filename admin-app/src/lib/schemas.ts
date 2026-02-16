@@ -55,3 +55,27 @@ export const InvoiceSchema = z.object({
     mechanic_name: z.string().optional().or(z.literal('')),
     invoice_date: z.string().optional()
 })
+
+export const EstimationItemSchema = z.object({
+    category: z.string().min(1, 'Category is required'),
+    description: z.string().min(1, 'Description is required').max(1000),
+    quantity: z.number().min(0.01, 'Quantity must be greater than 0'),
+    rate: z.number().min(0, 'Rate cannot be negative'),
+    amount: z.number().min(0).optional(),
+    item_type: z.enum(['part', 'labor']).optional(),
+    part_number: z.string().optional().or(z.literal('')),
+})
+
+export const EstimationSchema = z.object({
+    customer_id: z.string().uuid('Invalid customer selection'),
+    vehicle_id: z.string().uuid('Invalid vehicle selection'),
+    items: z.array(EstimationItemSchema).min(1, 'At least one item is required'),
+    discount_amount: z.number().min(0).optional(),
+    validity_period: z.number().min(1).optional(),
+    status: z.enum(['draft', 'sent']).optional(),
+    notes: z.string().max(2000).optional().or(z.literal('')),
+    mileage: z.number().min(0).nullable().optional(),
+    mechanic_name: z.string().optional().or(z.literal('')),
+    estimation_date: z.string().optional(),
+    created_by: z.string().optional(),
+})

@@ -169,3 +169,56 @@ export interface CarModel {
     model: string
     type: string
 }
+
+export interface EstimationItem {
+    id?: string
+    estimation_id?: string
+    part_id?: string
+    part_number?: string
+    description: string
+    category: string
+    quantity: number
+    unit?: string
+    rate: number
+    amount: number
+    item_type: 'part' | 'labor'
+}
+
+export interface Estimation {
+    id: string
+    estimation_number: string
+    customer_id: string
+    vehicle_id: string
+    estimation_date: string
+    mileage?: number
+    parts_total: number
+    labor_total: number
+    discount_amount: number
+    grand_total: number
+    status: 'draft' | 'sent' | 'accepted' | 'rejected' | 'converted'
+    validity_period: number
+    valid_until: string
+    converted_invoice_id?: string
+    notes?: string
+    mechanic_name?: string
+    created_by?: string
+    created_at: string
+    updated_at: string
+    customer?: Customer
+    vehicle?: Vehicle
+    items?: EstimationItem[]
+}
+
+export interface CreateEstimationData {
+    customer_id: string
+    vehicle_id: string
+    mileage?: number
+    items: Omit<EstimationItem, 'id' | 'estimation_id'>[]
+    discount_amount?: number
+    validity_period?: number
+    status?: 'draft' | 'sent'
+    notes?: string
+    mechanic_name?: string
+    estimation_date?: string
+    created_by?: string
+}

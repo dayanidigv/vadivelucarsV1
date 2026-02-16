@@ -14,8 +14,19 @@ export default function AdminLogin() {
   const [loading, setLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [oauthState] = useState(() => crypto.randomUUID())
-  const [nonce] = useState(() => crypto.randomUUID())
+  // Fallback for environments where crypto.randomUUID is not available (e.g. HTTP)
+  const generateUUID = () => {
+    if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+      return crypto.randomUUID();
+    }
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+      const r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
+      return v.toString(16);
+    });
+  };
+
+  const [oauthState] = useState(() => generateUUID())
+  const [nonce] = useState(() => generateUUID())
   const navigate = useNavigate()
   const { login, isAuthenticated, isLoading, user } = useAuth()
   const location = useLocation()

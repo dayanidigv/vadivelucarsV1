@@ -1,7 +1,8 @@
 import type {
     Customer, Part, Invoice, CreateInvoiceData,
     CreateCustomerInput, CreatePartInput, User, CarModel,
-    CreateUserInput, UpdateUserInput, AuditLogInput, ApiResponse
+    CreateUserInput, UpdateUserInput, AuditLogInput, ApiResponse,
+    Estimation, CreateEstimationData
 } from '@/types'
 
 export const API_URL = import.meta.env.VITE_API_URL || 'https://api.vadivelucars.in'
@@ -354,6 +355,63 @@ export class ApiClient {
     // Shared invoice print endpoint
     async getInvoiceForPrint(id: string) {
         return this.request<ApiResponse<Invoice>>(`/api/invoices/${id}/print`)
+    }
+
+    // Estimations
+    async getEstimations(page = 1, limit = 20, status?: string) {
+        let url = `/api/estimations?page=${page}&limit=${limit}`
+        if (status && status !== 'all') url += `&status=${status}`
+        return this.request<ApiResponse<Estimation[]>>(url)
+    }
+
+    async getEstimation(id: string) {
+        return this.request<ApiResponse<Estimation>>(`/api/estimations/${id}`)
+    }
+
+    async createEstimation(data: CreateEstimationData) {
+        return this.request<ApiResponse<Estimation>>('/api/estimations', {
+            method: 'POST',
+            body: JSON.stringify(data),
+        })
+    }
+
+    async updateEstimation(id: string, data: Partial<CreateEstimationData>) {
+        return this.request<ApiResponse<Estimation>>(`/api/estimations/${id}`, {
+            method: 'PUT',
+            body: JSON.stringify(data),
+        })
+    }
+
+    async deleteEstimation(id: string) {
+        return this.request<any>(`/api/estimations/${id}`, {
+            method: 'DELETE',
+        })
+    }
+
+    async updateEstimationStatus(id: string, status: string) {
+        return this.request<ApiResponse<Estimation>>(`/api/estimations/${id}/status`, {
+            method: 'PUT',
+            body: JSON.stringify({ status }),
+        })
+    }
+
+    async convertEstimationToInvoice(id: string) {
+        return this.request<ApiResponse<{ invoice_id: string }>>(`/api/estimations/${id}/convert`, {
+            method: 'POST',
+        })
+    }
+
+    async getEstimationForPrint(id: string) {
+        return this.request<ApiResponse<Estimation>>(`/api/estimations/${id}/print`)
+    }
+
+    // Customer estimations
+    async getCustomerEstimations(page = 1, limit = 20) {
+        return this.request<ApiResponse<Estimation[]>>(`/api/customer/estimations?page=${page}&limit=${limit}`)
+    }
+
+    async getCustomerEstimation(id: string) {
+        return this.request<ApiResponse<Estimation>>(`/api/customer/estimations/${id}`)
     }
 }
 

@@ -32,8 +32,12 @@ app.use('/api/*', async (c, next) => {
         return
     }
     
-    // Skip admin auth for shared invoice print endpoint - it will handle both auth types
+    // Skip admin auth for shared print endpoints - they handle both auth types
     if (c.req.path.startsWith('/api/invoices/') && c.req.path.endsWith('/print')) {
+        await next()
+        return
+    }
+    if (c.req.path.startsWith('/api/estimations/') && c.req.path.endsWith('/print')) {
         await next()
         return
     }

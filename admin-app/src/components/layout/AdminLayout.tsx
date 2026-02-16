@@ -1,11 +1,12 @@
 import { useState, useEffect, useRef } from 'react'
 import { Link, useLocation, useNavigate, Outlet } from 'react-router-dom'
-import { Home, FileText, Users, Package, BarChart3, Menu, X, Settings, LogOut, UserIcon, ChevronDown } from 'lucide-react'
+import { Home, FileText, Users, Package, BarChart3, Menu, X, Settings, LogOut, UserIcon, ChevronDown, ClipboardList } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
 
 const navigation = [
     { name: 'Dashboard', href: '/dashboard', icon: Home, roles: ['admin', 'manager', 'staff', 'technician'] },
     { name: 'Invoices', href: '/invoices', icon: FileText, roles: ['admin', 'manager', 'staff', 'technician'] },
+    { name: 'Estimations', href: '/estimations', icon: ClipboardList, roles: ['admin', 'manager', 'staff', 'technician'] },
     { name: 'Customers', href: '/customers', icon: Users, roles: ['admin', 'manager', 'staff', 'technician'] },
     { name: 'Parts', href: '/parts', icon: Package, roles: ['admin', 'manager', 'staff', 'technician'] },
     { name: 'Users', href: '/users', icon: UserIcon, roles: ['admin', 'manager'] },

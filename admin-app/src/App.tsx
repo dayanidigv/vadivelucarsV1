@@ -11,6 +11,7 @@ import { AdminLayout } from './components/layout/AdminLayout'
 // Pages
 import AdminLogin from './pages/AdminLogin'
 import InvoicePrint from './pages/InvoicePrint'
+import EstimationPrint from './pages/EstimationPrint'
 import NotFound from './pages/NotFound'
 
 // Admin Pages (Lazy Loaded)
@@ -22,6 +23,8 @@ const Parts = lazy(() => import('./pages/Parts'))
 const Reports = lazy(() => import('./pages/Reports'))
 const Settings = lazy(() => import('./pages/Settings'))
 const Users = lazy(() => import('./pages/Users'))
+const Estimations = lazy(() => import('./pages/Estimations'))
+const CreateEstimation = lazy(() => import('./pages/CreateEstimation'))
 
 // Loading Component
 const LoadingFallback = () => (
@@ -49,6 +52,9 @@ function App() {
                 <Route path="invoices" element={<Invoices />} />
                 <Route path="invoices/new" element={<CreateInvoice />} />
                 <Route path="invoices/:id" element={<CreateInvoice />} />
+                <Route path="estimations" element={<Estimations />} />
+                <Route path="estimations/new" element={<CreateEstimation />} />
+                <Route path="estimations/:id" element={<CreateEstimation />} />
                 <Route path="customers" element={<Customers />} />
                 <Route path="parts" element={<Parts />} />
                 <Route path="reports" element={<Reports />} />
@@ -56,8 +62,9 @@ function App() {
                 <Route path="users" element={<Users />} />
               </Route>
 
-              {/* Invoice Print (Shared/Admin context) */}
+              {/* Print Views (Shared/Admin context) */}
               <Route path="/invoices/:id/print" element={<InvoicePrint />} />
+              <Route path="/estimations/:id/print" element={<EstimationPrint />} />
 
               {/* 404 Page */}
               <Route path="*" element={<NotFound />} />

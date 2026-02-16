@@ -7,6 +7,7 @@ import SessionTimeoutWarning from './components/auth/SessionTimeoutWarning'
 import Login from './pages/Login'
 import Dashboard from './pages/Dashboard.tsx'
 import InvoiceDetails from './pages/InvoiceDetails.tsx'
+import EstimationDetails from './pages/EstimationDetails.tsx'
 import Profile from './pages/Profile.tsx'
 import Vehicles from './pages/Vehicles.tsx'
 import Feedback from './pages/Feedback.tsx'
@@ -31,6 +32,12 @@ function App() {
             <Route path="/invoices/:id" element={
               <CustomerProtectedRoute>
                 <InvoiceDetails />
+              </CustomerProtectedRoute>
+            } />
+
+            <Route path="/estimations/:id" element={
+              <CustomerProtectedRoute>
+                <EstimationDetails />
               </CustomerProtectedRoute>
             } />
             
