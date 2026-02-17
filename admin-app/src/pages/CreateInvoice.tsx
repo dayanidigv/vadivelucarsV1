@@ -37,7 +37,7 @@ import {
     DialogTitle,
 } from "@/components/ui/dialog"
 import { useSearchCustomers } from "@/hooks/useCustomers"
-import { useSearchParts } from "@/hooks/useParts"
+import { useSearchParts, useCreatePart } from "@/hooks/useParts"
 import { useCreateInvoice, useUpdateInvoice, useInvoice } from "@/hooks/useInvoices"
 import { useLastService } from "@/hooks/useLastService"
 import { useRecentlyUsedParts } from "../hooks/useRecentlyUsedParts"
@@ -46,6 +46,7 @@ import { encryptData, decryptData } from "@/lib/crypto"
 import { toast } from "sonner"
 import { Combobox } from "@/components/ui/combobox"
 import RecentlyUsedParts from "@/components/invoice/RecentlyUsedParts"
+import { ImageUploadDialog } from "@/components/invoice/ImageUploadDialog"
 import { Textarea } from "@/components/ui/textarea"
 import { CreateCustomerDialog } from "@/components/customer/CreateCustomerDialog"
 import type { Customer } from "@/types"
@@ -92,6 +93,36 @@ export default function CreateInvoice() {
     // Queries
     const { data: searchResults, isLoading: isLoadingCustomers } = useSearchCustomers(customerSearch)
     const { data: partResults, isLoading: isLoadingParts } = useSearchParts(partSearch)
+    const createPart = useCreatePart()
+
+    // Create new part on-the-fly from combobox
+    const handleCreateNewPart = async (name: string) => {
+        try {
+            const result = await createPart.mutateAsync({
+                name,
+                category: 'General',
+                default_rate: 0,
+                unit: 'No',
+                is_active: true
+            })
+            if (result?.data) {
+                append({
+                    part_id: result.data.id,
+                    description: result.data.name,
+                    quantity: 1,
+                    rate: "" as any,
+                    unit: result.data.unit || 'No',
+                    category: result.data.category || 'General',
+                    item_type: 'part',
+                    amount: 0
+                })
+                toast.success(`Created and added "${name}"`)
+                setPartSearch("")
+            }
+        } catch (error: any) {
+            toast.error(error.message || 'Failed to create part')
+        }
+    }
 
     const { register, control, handleSubmit, watch, setValue, reset, formState: { errors } } = useForm<InvoiceFormValues>({
         defaultValues: {
@@ -818,23 +849,40 @@ export default function CreateInvoice() {
                                     </CardDescription>
                                 </div>
                             </div>
-                            <Button
-                                type="button"
-                                size="sm"
-                                className="bg-blue-600 hover:bg-blue-700"
-                                onClick={() => append({
-                                    description: "",
-                                    quantity: 1,
-                                    rate: 0,
-                                    amount: 0,
-                                    item_type: 'part',
-                                    unit: 'No',
-                                    category: 'General'
-                                })}
-                            >
-                                <Plus className="h-4 w-4 mr-1" />
-                                Add Item
-                            </Button>
+                            <div className="flex items-center gap-2">
+                                <ImageUploadDialog
+                                    onItemsExtracted={(items) => {
+                                        items.forEach((item) => {
+                                            append({
+                                                description: item.description,
+                                                quantity: item.quantity,
+                                                rate: item.rate || ("" as any),
+                                                amount: item.quantity * (item.rate || 0),
+                                                item_type: 'part',
+                                                unit: 'No',
+                                                category: 'General'
+                                            })
+                                        })
+                                    }}
+                                />
+                                <Button
+                                    type="button"
+                                    size="sm"
+                                    className="bg-blue-600 hover:bg-blue-700"
+                                    onClick={() => append({
+                                        description: "",
+                                        quantity: 1,
+                                        rate: "" as any,
+                                        amount: 0,
+                                        item_type: 'part',
+                                        unit: 'No',
+                                        category: 'General'
+                                    })}
+                                >
+                                    <Plus className="h-4 w-4 mr-1" />
+                                    Add Item
+                                </Button>
+                            </div>
                         </div>
                     </CardHeader>
 
@@ -875,6 +923,8 @@ export default function CreateInvoice() {
                                 }}
                                 isLoading={isLoadingParts}
                                 emptyMessage="Start typing to search parts"
+                                creatable
+                                onCreateNew={handleCreateNewPart}
                             />
 
                             {/* Recently Used Parts */}
@@ -964,6 +1014,7 @@ export default function CreateInvoice() {
                                                                 valueAsNumber: true,
                                                                 min: 0
                                                             })}
+                                                            placeholder="Enter rate"
                                                             className="text-sm h-9 text-right"
                                                         />
                                                     </TableCell>
@@ -1051,6 +1102,27 @@ export default function CreateInvoice() {
                     ) : (
                         <Save className="h-6 w-6" />
                     )}
+                </Button>
+            </div>
+
+            {/* Floating Add Item Button */}
+            <div className="fixed bottom-6 right-6 z-50">
+                <Button
+                    type="button"
+                    size="icon"
+                    className="h-14 w-14 rounded-full shadow-2xl bg-green-600 hover:bg-green-700 flex items-center justify-center transition-transform hover:scale-110 active:scale-95 border-2 border-white"
+                    onClick={() => append({
+                        description: "",
+                        quantity: 1,
+                        rate: "" as any,
+                        amount: 0,
+                        item_type: 'part',
+                        unit: 'No',
+                        category: 'General'
+                    })}
+                    title="Add new item"
+                >
+                    <Plus className="h-6 w-6" />
                 </Button>
             </div>
         </div>

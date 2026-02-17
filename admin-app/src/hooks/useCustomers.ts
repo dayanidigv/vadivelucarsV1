@@ -16,7 +16,7 @@ export function useSearchCustomers(query: string) {
     return useQuery({
         queryKey: ['customers', 'search', query],
         queryFn: () => api.searchCustomers(query),
-        enabled: query.length > 0,
+        enabled: query.length >= 2,
     })
 }
 
@@ -75,6 +75,10 @@ export function useDeleteCustomer() {
         mutationFn: (id: string) => api.deleteCustomer(id),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['customers'] })
+            toast.success('Customer deleted successfully')
         },
+        onError: (error: Error) => {
+            toast.error(error.message || 'Failed to delete customer')
+        }
     })
 }

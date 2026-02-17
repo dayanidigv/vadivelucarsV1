@@ -136,10 +136,10 @@ export default function Dashboard() {
                                 <CardTitle className="text-lg font-semibold text-gray-900">Recent Invoices</CardTitle>
                                 <p className="text-sm text-gray-500 mt-1">Latest transactions</p>
                             </div>
-                            <button className="text-sm text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1">
+                            <Link to="/invoices" className="text-sm text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1">
                                 View All
                                 <ArrowUpRight className="h-3 w-3" />
-                            </button>
+                            </Link>
                         </div>
                     </CardHeader>
                     <CardContent>

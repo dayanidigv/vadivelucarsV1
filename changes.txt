@@ -1,0 +1,183 @@
+Vadivelu Cars Admin Panel - Required Changes
+
+1. Invoice and Estimation Pages - Remove Default Rate Value
+   - When adding a new line item, the rate field should be empty by default (remove the "0" default value)
+   - Users should be required to enter the actual rate
+
+2. Creatable Combobox for Parts Selection
+   - When selecting a part/item, if it doesn't exist in the dropdown, show a "Create new" option
+   - Allow users to add new parts on-the-fly without leaving the invoice/estimation page
+   - Implement as a creatable combobox component
+
+3. Add Floating Action Button
+   - Add a floating "+" button on both Invoice and Estimation pages
+   - Button should allow quick addition of new line items
+
+4. Image Upload Feature for Line Items (Advanced Feature)
+   - Reference image: /Users/daya/Daya/UI/dad/Same uploadable image.jpeg
+   - Allow users to upload an image containing item details (title/description, quantity, rate)
+   - Automatically extract and populate:
+     * Item title/description
+     * Quantity (QTY)
+     * Rate/price
+   - After extraction, allow users to edit the rate and other fields
+   - Use OCR or image recognition to parse the uploaded image
+   - Applicable to both invoice and estimation creation flows
+
+5. UI/UX Improvements - Responsive Design
+   - Update the entire admin panel UI to be more user-friendly
+   - Optimize for tablet view, specifically 1340x800 resolution
+   - Ensure all pages (Invoice, Estimation, Dashboard, Reports, etc.) are fully responsive
+   - Improve layout, spacing, and component sizing for better usability on tablets
+   - Test and adjust breakpoints for smooth transitions between desktop and tablet views
+
+6. Dashboard Page Optimization
+   - Optimize stats card grid layout for 1340x800 (use 2-column layout on tablets)
+   - Adjust chart/activity section grid (lg:grid-cols-7) for better tablet display
+   - Improve card spacing and padding for tablet touch interactions
+   - Enhance quick action cards for better tablet usability
+   - Ensure text sizes are readable on tablet devices
+   - Optimize recent invoices list for tablet viewing
+
+7. Reports Page Optimization
+   - Optimize quick stats grid (currently md:grid-cols-3) for tablet view
+   - Adjust chart layout grid (md:grid-cols-2 lg:grid-cols-7) for 1340x800 resolution
+   - Increase chart heights for better tablet readability
+   - Improve Revenue Overview and Invoice Volume chart responsiveness
+   - Optimize card spacing and content padding for tablet devices
+   - Ensure all data visualizations are clearly visible on tablet screen
+
+========================================
+BUGS & ISSUES FOUND (Full Admin Panel Audit)
+========================================
+
+8. CRITICAL Bugs
+   a. Combobox debounce memory leak (combobox.tsx)
+      - useCallback with debounce creates new timer on each render cycle without cleanup
+      - Debounced function never cancelled on unmount — calls onSearch on unmounted component
+      - Fix: Use useRef for debounced function or useEffect with cleanup
+
+   b. Null crash in InvoiceList/EstimationList search filter
+      - `inv.customer?.name.toLowerCase()` crashes if customer exists but name is null/undefined
+      - Same for `inv.vehicle?.vehicle_number.toLowerCase()`
+      - Fix: Add null guard — use `?.toLowerCase()` or fallback `|| ""`
+
+9. HIGH Priority Bugs
+   a. Client-side filtering broken across pages (InvoiceList, EstimationList, CustomerList, PartList)
+      - Search and status filters only apply to current page's data
+      - An invoice on page 2 matching the search won't appear when viewing page 1
+      - Fix: Implement server-side search/filter, or load all data before filtering
+
+   b. Print routes unprotected (App.tsx)
+      - `/invoices/:id/print` and `/estimations/:id/print` routes are outside ProtectedRoute
+      - Anyone with the UUID can view/print invoices and estimations without login
+
+   c. AdminLogin — `login()` not awaited (AdminLogin.tsx)
+      - `login(data.data.token, data.data.user)` called without `await`
+      - Since `login` is async (encrypts data), navigation to /dashboard may happen before token is stored
+      - User gets redirected back to login page due to missing token
+
+   d. AuthContext `logout` function re-created every render
+      - `logout` is a regular async function (not useCallback) but listed in useEffect dependency
+      - Session timeout timer resets continuously on every render
+
+   e. Missing error state handling (CustomerList, PartList)
+      - `error` not destructured from hooks — API failures show blank screen after loading
+      - Users see nothing — no error message or retry option
+
+   f. Users.tsx search fires API on every keystroke
+      - useEffect triggers searchUsers() on every character typed — no debounce
+      - Causes excessive API calls and potential rate limiting
+
+   g. CreateCustomerDialog silently discards fields
+      - `current_mileage` and `insurance_date` are in the form but stripped from submission data
+      - Users fill them in thinking they're saved, but the data is lost
+
+   h. Date parsing crash in InvoiceList
+      - `format(new Date(invoice.invoice_date), ...)` — if invoice_date is null, format() throws
+      - No null guard exists
+
+   i. `lodash.escape()` used redundantly in React (InvoiceList, EstimationList, CustomerList, PartList)
+      - React already escapes JSX content
+      - lodash.escape() causes HTML entities to display as literal text (e.g., "&amp;" shows as text)
+
+10. MEDIUM Priority Bugs
+    a. Stats only reflect current page data (InvoiceList, EstimationList, PartList)
+       - "Total Revenue" and "Total Value" only sum current page's data, not the full dataset
+       - Misleading labels — users think it's the all-time total
+
+    b. Pagination "Showing 1 to 0 of 0" when empty
+       - Start should also be 0 when there's no data
+
+    c. Delete operations missing error handling (CustomerList, PartList, InvoiceList, EstimationList)
+       - deleteX.mutate() called without onError/onSuccess callbacks
+       - Deletion failures are silent — no toast notification or visual feedback
+
+    d. Delete operations use browser confirm() instead of custom dialog
+       - InvoiceList and EstimationList use native confirm() — inconsistent with CustomerList/PartList pattern
+
+    e. EstimationList 6-column status tabs cramped on tablet
+       - grid-cols-6 for status tabs too narrow on 1340x800 — text may overflow
+
+    f. Combobox Popover width mismatch
+       - PopoverContent may not inherit trigger width — dropdown appears wrong size
+
+    g. Combobox onSelect value comparison may fail
+       - cmdk library lowercases value — uppercase option.value will never match for deselection
+
+    h. AdminLayout Settings route only visible to "super-admin" role
+       - User type only defines admin/manager/staff/technician — no "super-admin" exists
+       - Settings page permanently hidden from nav but still accessible via URL
+
+    i. Users.tsx — password sent to update API even when blank
+       - Empty password string should be stripped before sending in edit mode
+
+    j. Users.tsx — manual data fetching instead of React Query
+       - Uses useState + useEffect instead of useQuery — inconsistent with rest of app
+       - No automatic cache invalidation, no background refetch
+
+    k. Users.tsx — no role-based route protection
+       - /users route accessible to any logged-in user via URL
+       - Only hidden from nav for non-admin roles
+
+    l. Users action buttons cramped on tablet (1340x800)
+       - Four 32x32 icon buttons in Actions column may cause horizontal scrolling
+
+    m. AdminLayout `max-w-10xl` is not a standard Tailwind class
+       - Default only goes to max-w-7xl — class has no effect unless custom-defined
+
+    n. AuthContext token stored in both sessionStorage AND localStorage
+       - Defeats security purpose of sessionStorage — localStorage token persists across browser sessions
+
+    o. AuthContext hardcoded production URL as fallback
+       - If env var missing, dev traffic accidentally goes to production
+
+    p. No phone number validation in CreateCustomerDialog
+       - Phone field accepts any text — no format validation
+
+    q. InvoicePrint/EstimationPrint — no error state handling
+       - Shows "not found" instead of actual error message on API failure
+
+    r. Google OAuth CSRF state check may be a no-op (AdminLogin.tsx)
+       - GoogleLogin component may not actually include state parameter in response
+
+    s. No login rate limiting (AdminLogin.tsx)
+       - No client-side throttle on failed login attempts
+
+    t. Type inconsistencies (types/index.ts)
+       - InvoiceItem has both `rate` and `unit_price` — confusing duplication
+       - CreateInvoiceData has both `total_amount` and `grand_total`
+       - EstimationItem has `part_number` but InvoiceItem doesn't
+
+11. LOW Priority Issues
+    a. App.tsx LoadingFallback uses dark bg-slate-950 on light theme — jarring flash
+    b. App.tsx Toaster uses theme="dark" on light app — inconsistent
+    c. Accessibility: icon-only buttons missing aria-labels across all list pages
+    d. AdminLayout mobile menu has no overlay/backdrop
+    e. Vehicle year not validated in CreateCustomerDialog
+    f. No empty state in Users.tsx when no users found
+    g. useSearchParts/useSearchCustomers fire API on single character (should be 2+ chars)
+    h. useParts mutations (create/update/delete) all lack success/error toasts
+    i. useDeleteInvoice/useDeleteEstimation hooks lack error toast
+    j. Customer-specific hooks in admin app's hooks file (useInvoices.ts)
+    k. AuthContext logout uses window.location.href instead of React Router — full page reload

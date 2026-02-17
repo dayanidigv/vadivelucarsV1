@@ -26,6 +26,7 @@ interface ComboboxProps {
   value?: string
   onChange: (value: string) => void
   onSearch?: (query: string) => void
+  onCreateNew?: (name: string) => void
   placeholder?: string
   searchPlaceholder?: string
   selectedLabel?: string
@@ -41,6 +42,7 @@ export function Combobox({
   value,
   onChange,
   onSearch,
+  onCreateNew,
   placeholder = "Select option...",
   searchPlaceholder = "Search...",
   selectedLabel,
@@ -53,19 +55,32 @@ export function Combobox({
   const [open, setOpen] = React.useState(false)
   const [searchQuery, setSearchQuery] = React.useState("")
 
-  // Handle search with debounce
-  const debouncedSearch = React.useCallback(
-    debounce((query: string) => {
-      if (onSearch) {
-        onSearch(query)
+  // Handle search with debounce - using useRef to prevent memory leak
+  const debounceTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  React.useEffect(() => {
+    // Cleanup on unmount
+    return () => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current)
       }
-    }, 300),
-    [onSearch]
-  )
+    }
+  }, [])
 
   const handleSearchChange = (query: string) => {
     setSearchQuery(query)
-    debouncedSearch(query)
+
+    // Clear existing timer
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current)
+    }
+
+    // Set new timer
+    debounceTimerRef.current = setTimeout(() => {
+      if (onSearch) {
+        onSearch(query)
+      }
+    }, 300)
   }
 
   // Get display label
@@ -91,7 +106,7 @@ export function Combobox({
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-full p-0" align="start">
+      <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
         <Command shouldFilter={!onSearch}>
           <div className="flex items-center border-b px-3">
             {/* <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" /> */}
@@ -129,9 +144,9 @@ export function Combobox({
                 {options.map((option) => (
                   <CommandItem
                     key={option.value}
-                    value={option.value}
-                    onSelect={(currentValue) => {
-                      onChange(currentValue === value ? "" : currentValue)
+                    value={option.label}
+                    onSelect={() => {
+                      onChange(option.value === value ? "" : option.value)
                       setOpen(false)
                       setSearchQuery("")
                     }}
@@ -151,9 +166,13 @@ export function Combobox({
             {creatable && searchQuery && !options.some(o => o.label.toLowerCase() === searchQuery.toLowerCase()) && (
               <CommandGroup>
                 <CommandItem
-                  value={searchQuery}
+                  value={`__create__${searchQuery}`}
                   onSelect={() => {
-                    onChange(searchQuery)
+                    if (onCreateNew) {
+                      onCreateNew(searchQuery)
+                    } else {
+                      onChange(searchQuery)
+                    }
                     setOpen(false)
                     setSearchQuery("")
                   }}
@@ -169,16 +188,4 @@ export function Combobox({
       </PopoverContent>
     </Popover >
   )
-}
-
-// Debounce utility
-function debounce<T extends (...args: any[]) => any>(
-  func: T,
-  wait: number
-): (...args: Parameters<T>) => void {
-  let timeout: ReturnType<typeof setTimeout> | null = null
-  return (...args: Parameters<T>) => {
-    if (timeout) clearTimeout(timeout)
-    timeout = setTimeout(() => func(...args), wait)
-  }
 }

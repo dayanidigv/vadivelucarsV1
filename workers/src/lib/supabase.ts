@@ -1,4 +1,4 @@
-import { createClient } from '@supabase/supabase-js'
+import { createClient, SupabaseClient } from '@supabase/supabase-js'
 
 export interface Env {
     SUPABASE_URL: string
@@ -7,15 +7,18 @@ export interface Env {
     CUSTOMER_JWT_SECRET: string
     JWT_SECRET: string
     DEV?: string
+    AI: any
 }
 
+// Cache the Supabase client to avoid creating a new HTTP connection on every request
+let cachedClient: SupabaseClient | null = null
+let cachedUrl: string | null = null
+
 export function getSupabaseClient(env: Env) {
-    // Use service key for backend operations to bypass RLS if needed, 
-    // or anon key if acting as public. 
-    // For this backend API, we largely act as admin/staff, so we might want service key 
-    // BUT effectively we want to be careful. The guide uses anon key in some places 
-    // but for backend admin tasks service key is better. 
-    // Let's stick to the guide's pattern or use service key for full access.
-    // Given we are building an internal billing tool, service key is appropriate for server-side operations.
-    return createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_KEY)
+    if (cachedClient && cachedUrl === env.SUPABASE_URL) {
+        return cachedClient
+    }
+    cachedClient = createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_KEY)
+    cachedUrl = env.SUPABASE_URL
+    return cachedClient
 }

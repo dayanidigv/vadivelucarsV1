@@ -5,10 +5,17 @@ import { InvoiceSchema } from '../lib/schemas'
 import { toast } from 'sonner'
 import type { CreateInvoiceData } from '@/types'
 
-export function useInvoices(page = 1, limit = 20) {
+export function useInvoices(page = 1, limit = 20, search = '', status = '') {
     return useQuery({
-        queryKey: ['invoices', page, limit],
-        queryFn: () => api.getInvoices(page, limit),
+        queryKey: ['invoices', page, limit, search, status],
+        queryFn: () => api.getInvoices(page, limit, search, status),
+    })
+}
+
+export function useInvoiceStats() {
+    return useQuery({
+        queryKey: ['invoices', 'stats'],
+        queryFn: () => api.getInvoiceStats(),
     })
 }
 
@@ -96,6 +103,10 @@ export function useDeleteInvoice() {
         mutationFn: (id: string) => api.deleteInvoice(id),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['invoices'] })
+            toast.success('Invoice deleted successfully')
         },
+        onError: (error: Error) => {
+            toast.error(error.message || 'Failed to delete invoice')
+        }
     })
 }

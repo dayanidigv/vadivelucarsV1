@@ -28,7 +28,7 @@ const CreateEstimation = lazy(() => import('./pages/CreateEstimation'))
 
 // Loading Component
 const LoadingFallback = () => (
-  <div className="flex items-center justify-center min-h-screen bg-slate-950">
+  <div className="flex items-center justify-center min-h-screen bg-gray-50">
     <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
   </div>
 )
@@ -62,15 +62,15 @@ function App() {
                 <Route path="users" element={<Users />} />
               </Route>
 
-              {/* Print Views (Shared/Admin context) */}
-              <Route path="/invoices/:id/print" element={<InvoicePrint />} />
-              <Route path="/estimations/:id/print" element={<EstimationPrint />} />
+              {/* Print Views - Protected (require authentication) */}
+              <Route path="/invoices/:id/print" element={<ProtectedRoute><InvoicePrint /></ProtectedRoute>} />
+              <Route path="/estimations/:id/print" element={<ProtectedRoute><EstimationPrint /></ProtectedRoute>} />
 
               {/* 404 Page */}
               <Route path="*" element={<NotFound />} />
             </Routes>
           </Suspense>
-          <Toaster richColors position="top-right" theme="dark" />
+          <Toaster richColors position="top-right" />
         </Router>
       </AuthProvider>
     </HelmetProvider>

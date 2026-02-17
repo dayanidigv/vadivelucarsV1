@@ -292,24 +292,32 @@ export default function EstimationPDF({ estimation }: { estimation: Estimation }
     const discount = Number(estimation.discount_amount) || 0;
     const totalAmount = subtotal - discount;
 
-    // Pagination
-    const itemsPerPage = 30;
+    // Pagination — first page fits fewer items due to the large header
+    const itemsFirstPage = 26;
+    const itemsPerContinuationPage = 30;
     const minRowsLastPage = 15;
-    const totalPages = Math.ceil(items.length / itemsPerPage);
 
+    // Split items into pages
     const pages: EstimationItem[][] = [];
-    for (let i = 0; i < totalPages; i++) {
-        const start = i * itemsPerPage;
-        const end = Math.min(start + itemsPerPage, items.length);
-        pages.push(items.slice(start, end));
+    if (items.length <= itemsFirstPage) {
+        pages.push(items);
+    } else {
+        pages.push(items.slice(0, itemsFirstPage));
+        let cursor = itemsFirstPage;
+        while (cursor < items.length) {
+            const end = Math.min(cursor + itemsPerContinuationPage, items.length);
+            pages.push(items.slice(cursor, end));
+            cursor = end;
+        }
     }
+    const totalPages = pages.length;
 
     return (
         <Document>
             {pages.map((pageItems: EstimationItem[], pageIndex) => {
                 const isFirstPage = pageIndex === 0;
                 const isLastPage = pageIndex === totalPages - 1;
-                const startItemIndex = pageIndex * itemsPerPage;
+                const startItemIndex = isFirstPage ? 0 : itemsFirstPage + (pageIndex - 1) * itemsPerContinuationPage;
 
                 const emptyRows = isLastPage && pageItems.length < minRowsLastPage
                     ? minRowsLastPage - pageItems.length

@@ -6,16 +6,11 @@ import { getSupabaseClient, Env } from '../lib/supabase'
 
 const auth = new Hono<{ Bindings: Env }>()
 
-// JWT Secret - In production, use environment variable
-// const JWT_SECRET = 'vadivelu-cars-secret-key'
-
 // Login endpoint
 auth.post('/login', async (c) => {
   try {
     const { username, password } = await c.req.json()
     const supabase = getSupabaseClient(c.env)
-
-    console.log('Login attempt:', { username, hasPassword: !!password })
 
     if (!username || !password) {
       return c.json({ success: false, message: 'Username and password are required' }, 400)
@@ -28,10 +23,7 @@ auth.post('/login', async (c) => {
       .or(`username.eq.${username},email.eq.${username}`)
       .single()
 
-    console.log('User query result:', { error: error?.message, userFound: !!user })
-
     if (error || !user) {
-      console.log('User not found or error:', error)
       return c.json({ success: false, message: 'Invalid credentials' }, 401)
     }
 
@@ -50,7 +42,6 @@ auth.post('/login', async (c) => {
 
     // Verify password
     const isValidPassword = await compare(password, user.password_hash)
-    console.log('Password verification:', { isValid: isValidPassword })
 
     if (!isValidPassword) {
       // Increment login attempts
@@ -276,10 +267,10 @@ auth.get('/verify', async (c) => {
       return c.json({ success: false, message: 'Invalid token' }, 401)
     }
 
-    // Check if session exists and is not expired
+    // Single query: check session + get user via join
     const { data: session, error } = await supabase
       .from('user_sessions')
-      .select('*')
+      .select('expires_at, users:user_id(id, username, email, name, role, permissions, is_active)')
       .eq('session_token', payload.sessionId)
       .eq('user_id', payload.userId)
       .single()
@@ -288,21 +279,22 @@ auth.get('/verify', async (c) => {
       return c.json({ success: false, message: 'Session expired' }, 401)
     }
 
-    // Get user details
-    const { data: user, error: userError } = await supabase
-      .from('users')
-      .select('id, username, email, name, role, permissions, is_active')
-      .eq('id', payload.userId)
-      .single()
-
-    if (userError || !user || !user.is_active) {
+    const user = session.users as any
+    if (!user || !user.is_active) {
       return c.json({ success: false, message: 'User not found or inactive' }, 401)
     }
 
     return c.json({
       success: true,
       data: {
-        user,
+        user: {
+          id: user.id,
+          username: user.username,
+          email: user.email,
+          name: user.name,
+          role: user.role,
+          permissions: user.permissions,
+        },
         sessionId: payload.sessionId
       }
     })

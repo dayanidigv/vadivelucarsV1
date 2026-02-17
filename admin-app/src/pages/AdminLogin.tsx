@@ -14,6 +14,8 @@ export default function AdminLogin() {
   const [loading, setLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [failedAttempts, setFailedAttempts] = useState(0)
+  const [lockoutUntil, setLockoutUntil] = useState<number | null>(null)
   // Fallback for environments where crypto.randomUUID is not available (e.g. HTTP)
   const generateUUID = () => {
     if (typeof crypto !== 'undefined' && crypto.randomUUID) {
@@ -40,6 +42,14 @@ export default function AdminLogin() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+
+    // Client-side rate limiting
+    if (lockoutUntil && Date.now() < lockoutUntil) {
+      const secondsLeft = Math.ceil((lockoutUntil - Date.now()) / 1000)
+      setError(`Too many failed attempts. Try again in ${secondsLeft} seconds.`)
+      return
+    }
+
     setLoading(true)
     setError(null)
 
@@ -47,13 +57,22 @@ export default function AdminLogin() {
       const data = await api.login(credentials.username, credentials.password)
 
       if (data.success) {
-        login(data.data.token, data.data.user)
+        setFailedAttempts(0)
+        setLockoutUntil(null)
+        await login(data.data.token, data.data.user)
         toast.success('Login successful!')
         navigate('/dashboard')
       } else {
-        const msg = data.message || 'Login failed'
-        setError(msg)
-        toast.error(msg)
+        const attempts = failedAttempts + 1
+        setFailedAttempts(attempts)
+        if (attempts >= 5) {
+          setLockoutUntil(Date.now() + 30000)
+          setError('Too many failed attempts. Please wait 30 seconds.')
+        } else {
+          const msg = data.message || 'Login failed'
+          setError(msg)
+          toast.error(msg)
+        }
       }
     } catch (error) {
       const msg = error instanceof Error ? error.message : 'Network error. Please try again.'

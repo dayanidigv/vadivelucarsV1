@@ -20,9 +20,9 @@ export class ApiClient {
     ): Promise<T> {
         const url = `${this.baseUrl}${endpoint}`
 
-        // Get tokens from sessionStorage (high security) or localStorage (legacy/persistence)
-        const adminToken = sessionStorage.getItem('token') || localStorage.getItem('token')
-        const customerToken = sessionStorage.getItem('customerToken') || localStorage.getItem('customerToken')
+        // Get tokens from sessionStorage only (better security - no persistence across browser restarts)
+        const adminToken = sessionStorage.getItem('token')
+        const customerToken = sessionStorage.getItem('customerToken')
 
         const headers: HeadersInit = {
             'Content-Type': 'application/json',
@@ -64,7 +64,15 @@ export class ApiClient {
         if (!response.ok) {
             const error = await response.json().catch(() => ({}))
             console.error('❌ API Error:', { endpoint, status: response.status, error, tokenType })
-            throw new Error(error.error || 'Request failed')
+
+            // Auto-clear auth on 401 for admin routes (token expired/invalid)
+            if (response.status === 401 && tokenType === 'admin' && !endpoint.includes('/auth/')) {
+                sessionStorage.removeItem('token')
+                localStorage.removeItem('user')
+                window.location.href = '/login'
+            }
+
+            throw new Error(error.error || error.message || 'Request failed')
         }
 
         return response.json()
@@ -85,30 +93,21 @@ export class ApiClient {
         })
     }
 
-    async logout(token: string) {
+    async logout() {
         return this.request<any>('/api/auth/logout', {
             method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${token}`
-            }
         })
     }
 
-    async verifyToken(token: string) {
+    async verifyToken(_token?: string) {
         return this.request<any>('/api/auth/verify', {
             method: 'GET',
-            headers: {
-                'Authorization': `Bearer ${token}`
-            }
         })
     }
 
-    async changePassword(token: string, currentPassword: string, newPassword: string) {
+    async changePassword(currentPassword: string, newPassword: string) {
         return this.request<any>('/api/auth/change-password', {
             method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${token}`
-            },
             body: JSON.stringify({ currentPassword, newPassword }),
         })
     }
@@ -162,8 +161,15 @@ export class ApiClient {
     }
 
     // Invoices
-    async getInvoices(page = 1, limit = 20) {
-        return this.request<ApiResponse<Invoice[]>>(`/api/invoices?page=${page}&limit=${limit}`)
+    async getInvoices(page = 1, limit = 20, search = '', status = '') {
+        let url = `/api/invoices?page=${page}&limit=${limit}`
+        if (search) url += `&search=${encodeURIComponent(search)}`
+        if (status && status !== 'all') url += `&status=${status}`
+        return this.request<ApiResponse<Invoice[]>>(url)
+    }
+
+    async getInvoiceStats() {
+        return this.request<ApiResponse<any>>('/api/invoices/stats')
     }
 
     async getInvoice(id: string) {
@@ -412,6 +418,14 @@ export class ApiClient {
 
     async getCustomerEstimation(id: string) {
         return this.request<ApiResponse<Estimation>>(`/api/customer/estimations/${id}`)
+    }
+
+    // OCR - Extract items from image
+    async extractItemsFromImage(imageBase64: string) {
+        return this.request<ApiResponse<{ description: string; quantity: number; rate: number }[]>>('/api/ocr/extract-items', {
+            method: 'POST',
+            body: JSON.stringify({ image: imageBase64 }),
+        })
     }
 }
 

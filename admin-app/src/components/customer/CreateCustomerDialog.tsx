@@ -232,7 +232,13 @@ export function CreateCustomerDialog({
 
             <div className="space-y-2">
                 <Label htmlFor="phone">Phone (Optional)</Label>
-                <Input id="phone" {...register("phone")} placeholder="9876543210" />
+                <Input id="phone" {...register("phone", {
+                    pattern: {
+                        value: /^[0-9]{10}$/,
+                        message: "Phone must be a 10-digit number"
+                    }
+                })} placeholder="9876543210" maxLength={10} />
+                {errors.phone && <span className="text-sm text-red-500">{errors.phone.message as string}</span>}
             </div>
 
             <div className="space-y-2">
@@ -336,7 +342,18 @@ export function CreateCustomerDialog({
                                 </div>
                                 <div className="space-y-2">
                                     <Label className="text-sm font-semibold">Year</Label>
-                                    <Input {...register(`vehicles.${index}.year`)} placeholder="2022" />
+                                    <Input {...register(`vehicles.${index}.year`, {
+                                        validate: (val) => {
+                                            if (!val) return true
+                                            const num = parseInt(val)
+                                            if (isNaN(num)) return "Year must be a number"
+                                            if (num < 1900 || num > new Date().getFullYear() + 1) return `Year must be between 1900 and ${new Date().getFullYear() + 1}`
+                                            return true
+                                        }
+                                    })} placeholder="2022" maxLength={4} />
+                                    {errors.vehicles?.[index]?.year && (
+                                        <span className="text-xs text-red-500">{(errors.vehicles[index] as any).year.message}</span>
+                                    )}
                                 </div>
                             </div>
 

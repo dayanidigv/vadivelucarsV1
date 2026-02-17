@@ -79,7 +79,11 @@ export function useDeleteEstimation() {
         mutationFn: (id: string) => api.deleteEstimation(id),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['estimations'] })
+            toast.success('Estimation deleted successfully')
         },
+        onError: (error: Error) => {
+            toast.error(error.message || 'Failed to delete estimation')
+        }
     })
 }
 

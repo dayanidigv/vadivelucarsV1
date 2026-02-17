@@ -14,6 +14,7 @@ import * as carModelController from './controllers/carModel'
 import * as auditLogController from './controllers/auditLog'
 import * as estimationController from './controllers/estimation'
 import * as customerEstimationController from './controllers/customerEstimation'
+import { ocr } from './controllers/ocr'
 import { Env } from './lib/supabase'
 
 // Define Bindings to include Env
@@ -68,6 +69,7 @@ router.put('/estimations/:id/status', estimationController.updateStatus)
 router.post('/estimations/:id/convert', estimationController.convertToInvoice)
 
 // Invoices
+router.get('/invoices/stats', invoiceController.stats)
 router.get('/invoices', invoiceController.list)
 router.get('/invoices/:id', invoiceController.get)
 router.get('/invoices/last', invoiceController.getLastByVehicle)
@@ -98,5 +100,8 @@ router.route('/audit-logs', auditLogController.auditLogs)
 // Dashboard
 router.get('/dashboard', dashboardController.getStats)
 router.get('/reports/revenue', dashboardController.getRevenueStats)
+
+// OCR - Image to items extraction
+router.route('/ocr', ocr)
 
 export default router

@@ -45,19 +45,28 @@ import {
     Car,
     X,
     TrendingUp,
-    Clock
+    Clock,
+    AlertTriangle
 } from "lucide-react"
 import { format } from "date-fns"
-import { escape } from "lodash"
 import { Link } from "react-router-dom"
-import { useState, useMemo } from "react"
-import { useInvoices, useDeleteInvoice } from "@/hooks/useInvoices"
+import { useState } from "react"
+import { useInvoices, useDeleteInvoice, useInvoiceStats } from "@/hooks/useInvoices"
+import { useDebounce } from "@/hooks/useDebounce"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import type { Invoice } from "@/types"
 import { pdf } from "@react-pdf/renderer"
 import InvoicePDF from "@/components/invoices/InvoicePDF"
 import { toast } from "sonner"
 import { api } from "@/lib/api"
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from "@/components/ui/dialog"
 
 export function InvoiceList() {
     // State
@@ -65,9 +74,15 @@ export function InvoiceList() {
     const [limit, setLimit] = useState(10)
     const [search, setSearch] = useState("")
     const [statusFilter, setStatusFilter] = useState("all")
+    const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
+    const [invoiceToDelete, setInvoiceToDelete] = useState<Invoice | null>(null)
 
-    // Data Fetching
-    const { data: invoiceData, isLoading, error } = useInvoices(page, limit)
+    // Debounce search to reduce API calls
+    const debouncedSearch = useDebounce(search, 500)
+
+    // Data Fetching with server-side filtering
+    const { data: invoiceData, isLoading, error } = useInvoices(page, limit, debouncedSearch, statusFilter)
+    const { data: statsData } = useInvoiceStats()
     const deleteInvoice = useDeleteInvoice()
 
     // Handlers
@@ -101,35 +116,17 @@ export function InvoiceList() {
     const invoices = invoiceData?.data || []
     const pagination = invoiceData?.pagination || { page: 1, limit: 20, total: 0, pages: 1 }
 
-    // Client-side filtering logic
-    const filteredInvoices = useMemo(() => {
-        let filtered = [...invoices]
+    // Server-side filtering - no need for client-side filter
+    const displayedInvoices = invoices
 
-        if (statusFilter !== "all") {
-            filtered = filtered.filter((inv: Invoice) => inv.payment_status === statusFilter)
-        }
-
-        if (search.trim()) {
-            const query = search.toLowerCase()
-            filtered = filtered.filter((inv: Invoice) =>
-                inv.invoice_number.toLowerCase().includes(query) ||
-                inv.customer?.name.toLowerCase().includes(query) ||
-                inv.vehicle?.vehicle_number.toLowerCase().includes(query)
-            )
-        }
-
-        return filtered
-    }, [invoices, search, statusFilter])
-
-    // Stats calculation
-    const stats = useMemo(() => {
-        const total = invoices.reduce((sum: number, inv: Invoice) => sum + parseFloat(String(inv.grand_total || 0)), 0)
-        const paid = invoices.filter((inv: Invoice) => inv.payment_status === 'paid').length
-        const unpaid = invoices.filter((inv: Invoice) => inv.payment_status === 'unpaid' || inv.payment_status === 'pending').length
-        const partial = invoices.filter((inv: Invoice) => inv.payment_status === 'partial').length
-
-        return { total, paid, unpaid, partial, count: invoices.length }
-    }, [invoices])
+    // All-time stats from backend
+    const stats = {
+        total: statsData?.data?.totalRevenue || 0,
+        paid: statsData?.data?.paidCount || 0,
+        unpaid: statsData?.data?.unpaidCount || 0,
+        partial: statsData?.data?.partialCount || 0,
+        count: statsData?.data?.totalCount || 0
+    }
 
     if (error) {
         return (
@@ -297,7 +294,7 @@ export function InvoiceList() {
                                             </TableCell>
                                         </TableRow>
                                     ))
-                                ) : filteredInvoices.length === 0 ? (
+                                ) : displayedInvoices.length === 0 ? (
                                     <TableRow>
                                         <TableCell colSpan={7} className="h-48">
                                             <div className="flex flex-col items-center justify-center text-center">
@@ -314,7 +311,7 @@ export function InvoiceList() {
                                         </TableCell>
                                     </TableRow>
                                 ) : (
-                                    filteredInvoices.map((invoice: Invoice) => (
+                                    displayedInvoices.map((invoice: Invoice) => (
                                         <TableRow key={invoice.id} className="hover:bg-gray-50 transition-colors">
                                             <TableCell>
                                                 <div className="flex items-center gap-2">
@@ -333,7 +330,7 @@ export function InvoiceList() {
                                                     </div>
                                                     <div>
                                                         <p className="font-semibold text-sm text-gray-900">
-                                                            {escape(invoice.customer?.name)}
+                                                            {(invoice.customer?.name)}
                                                         </p>
                                                         <p className="text-xs text-gray-500">
                                                             {invoice.customer?.phone}
@@ -348,10 +345,10 @@ export function InvoiceList() {
                                                     </div>
                                                     <div>
                                                         <p className="font-mono text-xs font-semibold text-gray-900 bg-gray-100 px-2 py-0.5 rounded">
-                                                            {escape(invoice.vehicle?.vehicle_number)}
+                                                            {(invoice.vehicle?.vehicle_number)}
                                                         </p>
                                                         <p className="text-xs text-gray-500 mt-0.5">
-                                                            {escape(invoice.vehicle?.model)}
+                                                            {(invoice.vehicle?.model)}
                                                         </p>
                                                     </div>
                                                 </div>
@@ -359,7 +356,7 @@ export function InvoiceList() {
                                             <TableCell>
                                                 <div className="flex items-center gap-2 text-sm text-gray-600">
                                                     <Calendar className="h-3.5 w-3.5 text-gray-400" />
-                                                    {format(new Date(invoice.invoice_date), "MMM d, yyyy")}
+                                                    {invoice.invoice_date ? format(new Date(invoice.invoice_date), "MMM d, yyyy") : 'N/A'}
                                                 </div>
                                             </TableCell>
                                             <TableCell className="text-right">
@@ -385,7 +382,7 @@ export function InvoiceList() {
                                             <TableCell className="text-right">
                                                 <div className="flex items-center justify-end gap-2">
                                                     <Link to={`/invoices/${invoice.id}`}>
-                                                        <Button variant="ghost" size="icon" className="hover:bg-blue-50 hover:text-blue-600">
+                                                        <Button variant="ghost" size="icon" className="hover:bg-blue-50 hover:text-blue-600" aria-label="View invoice">
                                                             <Eye className="h-4 w-4" />
                                                         </Button>
                                                     </Link>
@@ -394,6 +391,7 @@ export function InvoiceList() {
                                                         size="icon"
                                                         className="hover:bg-green-50 hover:text-green-600"
                                                         onClick={() => window.open(`/invoices/${invoice.id}/print`, '_blank')}
+                                                        aria-label="Print invoice"
                                                     >
                                                         <Printer className="h-4 w-4" />
                                                     </Button>
@@ -424,9 +422,8 @@ export function InvoiceList() {
                                                             <DropdownMenuItem
                                                                 className="text-red-600 focus:text-red-600 focus:bg-red-50"
                                                                 onClick={() => {
-                                                                    if (confirm("Delete this invoice? This action cannot be undone.")) {
-                                                                        deleteInvoice.mutate(String(invoice.id))
-                                                                    }
+                                                                    setInvoiceToDelete(invoice)
+                                                                    setIsDeleteDialogOpen(true)
                                                                 }}
                                                             >
                                                                 <Trash2 className="mr-2 h-4 w-4" />
@@ -449,7 +446,7 @@ export function InvoiceList() {
             <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-white p-4 rounded-lg border shadow-sm">
                 <div className="flex items-center gap-6">
                     <span className="text-sm text-gray-600">
-                        Showing <span className="font-semibold text-gray-900">{((pagination.page - 1) * pagination.limit) + 1}</span> to{' '}
+                        Showing <span className="font-semibold text-gray-900">{pagination.total === 0 ? 0 : ((pagination.page - 1) * pagination.limit) + 1}</span> to{' '}
                         <span className="font-semibold text-gray-900">{Math.min(pagination.page * pagination.limit, pagination.total)}</span> of{' '}
                         <span className="font-semibold text-gray-900">{pagination.total}</span> entries
                     </span>
@@ -503,6 +500,49 @@ export function InvoiceList() {
                     </Button>
                 </div>
             </div>
+
+            {/* Delete Confirmation Dialog */}
+            <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+                <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2 text-xl">
+                            <div className="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center">
+                                <AlertTriangle className="h-5 w-5 text-red-600" />
+                            </div>
+                            Delete Invoice
+                        </DialogTitle>
+                        <DialogDescription className="pt-2">
+                            Are you sure you want to delete invoice{' '}
+                            <span className="font-semibold text-gray-900">#{invoiceToDelete?.invoice_number}</span>?
+                            This action cannot be undone.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter className="gap-2 sm:gap-0">
+                        <Button
+                            variant="outline"
+                            onClick={() => setIsDeleteDialogOpen(false)}
+                            className="sm:mr-2"
+                        >
+                            Cancel
+                        </Button>
+                        <Button
+                            variant="destructive"
+                            onClick={() => {
+                                if (invoiceToDelete) {
+                                    deleteInvoice.mutate(String(invoiceToDelete.id))
+                                    setIsDeleteDialogOpen(false)
+                                    setInvoiceToDelete(null)
+                                }
+                            }}
+                            disabled={deleteInvoice.isPending}
+                            className="bg-red-600 hover:bg-red-700"
+                        >
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            Delete Invoice
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     )
 }

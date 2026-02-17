@@ -1,8 +1,7 @@
-import { createContext, useContext, useEffect, useState, useCallback } from 'react'
+import { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react'
 import type { ReactNode } from 'react'
 import { toast } from 'sonner'
 import { api } from '@/lib/api'
-import { encryptData } from '@/lib/crypto'
 
 interface User {
   id: string
@@ -20,7 +19,6 @@ interface AuthContextType {
   logout: () => Promise<void>
   isAuthenticated: boolean
   isLoading: boolean
-  verifySession: () => Promise<User | null>
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -40,111 +38,119 @@ interface AuthProviderProps {
 }
 
 export function AuthProvider({ children }: AuthProviderProps) {
-  const [user, setUser] = useState<User | null>(null)
-  const [token, setToken] = useState<string | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
-
-  const verifySession = useCallback(async () => {
-    // Try sessionStorage for high security, fallback to localStorage if needed during migration
-    const storedToken = sessionStorage.getItem('token') || localStorage.getItem('token')
-
-    if (!storedToken) {
-      setToken(null)
-      setUser(null)
+  // Restore user/token from storage immediately (no API call needed for initial render)
+  const [user, setUser] = useState<User | null>(() => {
+    try {
+      const stored = localStorage.getItem('user')
+      return stored ? JSON.parse(stored) : null
+    } catch {
       return null
     }
+  })
+  const [token, setToken] = useState<string | null>(() => {
+    return sessionStorage.getItem('token')
+  })
+  const [isLoading, setIsLoading] = useState(() => {
+    // Only show loading if we have a token to verify
+    return !!sessionStorage.getItem('token')
+  })
+  const verifyCalledRef = useRef(false)
 
-    try {
-      const response = await api.verifyToken(storedToken)
-      if (response.success && response.data?.user) {
-        setToken(storedToken)
-        setUser(response.data.user)
+  // Verify session with the backend once on mount
+  useEffect(() => {
+    if (verifyCalledRef.current) return
+    verifyCalledRef.current = true
 
-        // Ensure token is in both storage locations for multi-tab support
-        sessionStorage.setItem('token', storedToken)
-        localStorage.setItem('token', storedToken)
-
-        // Store encrypted user data
-        const encryptedUser = await encryptData(JSON.stringify(response.data.user))
-        localStorage.setItem('user', encryptedUser)
-
-        return response.data.user
-      }
-    } catch (error) {
-      console.error('Session verification failed:', error)
-      sessionStorage.removeItem('token')
-      localStorage.removeItem('token')
-      localStorage.removeItem('user')
-      setToken(null)
-      setUser(null)
+    const storedToken = sessionStorage.getItem('token')
+    if (!storedToken) {
+      setIsLoading(false)
+      return
     }
-    return null
+
+    const verifyToken = async () => {
+      try {
+        const response = await api.verifyToken(storedToken)
+        if (response.success && response.data?.user) {
+          setToken(storedToken)
+          setUser(response.data.user)
+          localStorage.setItem('user', JSON.stringify(response.data.user))
+        } else {
+          // Token is definitively invalid — clear auth
+          clearAuth()
+        }
+      } catch (error) {
+        // Network error — keep the cached auth state so user isn't logged out
+        // They'll get 401s on actual API calls if the token is truly expired
+        console.warn('Session verification failed (network issue), keeping cached auth:', error)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    verifyToken()
   }, [])
 
-  useEffect(() => {
-    const initAuth = async () => {
-      setIsLoading(true)
-      await verifySession()
-      setIsLoading(false)
-    }
+  const clearAuth = useCallback(() => {
+    sessionStorage.removeItem('token')
+    sessionStorage.removeItem('invoice-draft')
+    localStorage.removeItem('user')
+    localStorage.removeItem('invoice-draft')
+    setToken(null)
+    setUser(null)
+  }, [])
 
-    initAuth()
-  }, [verifySession])
-
-  const login = async (newToken: string, userData: User) => {
-    // console.log('🔐 AuthContext.login called:', {
-    //   tokenLength: newToken.length,
-    //   userId: userData.id,
-    //   username: userData.username
-    // })
-
-    // Store token in both storage locations for multi-tab support
+  const login = useCallback((newToken: string, userData: User) => {
     sessionStorage.setItem('token', newToken)
-    localStorage.setItem('token', newToken)
-
-    // Encrypt user data before storing in localStorage
-    const encryptedUser = await encryptData(JSON.stringify(userData))
-    localStorage.setItem('user', encryptedUser)
-
+    localStorage.setItem('user', JSON.stringify(userData))
     setToken(newToken)
     setUser(userData)
+  }, [])
 
-    console.log('✅ Token stored in sessionStorage & Encrypted user data in localStorage')
-  }
-
-  const logout = async () => {
+  const logout = useCallback(async () => {
     try {
       if (token) {
-        // Call logout API to invalidate session
-        const response = await fetch(`${import.meta.env.VITE_API_URL || 'https://vadivelucars.dayanidigv954.workers.dev'}/api/auth/logout`, {
+        await fetch(`${import.meta.env.VITE_API_URL}/api/auth/logout`, {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
           }
-        })
-
-        if (!response.ok) {
-          console.error('Logout API call failed:', response.statusText)
-        }
+        }).catch(() => {}) // Ignore logout API errors
       }
-    } catch (error) {
-      console.error('Error during logout:', error)
     } finally {
-      // Always clear storage even if API call fails
-      sessionStorage.removeItem('token')
-      sessionStorage.removeItem('invoice-draft')
-      localStorage.removeItem('token')
-      localStorage.removeItem('user')
-      localStorage.removeItem('invoice-draft')
-      setToken(null)
-      setUser(null)
+      clearAuth()
       toast.success('Logged out successfully')
-      // Note: Navigation will be handled by the component that calls logout
     }
-  }
+  }, [token, clearAuth])
 
   const isAuthenticated = !!token && !!user
+
+  // Session timeout — auto logout after inactivity
+  useEffect(() => {
+    if (!isAuthenticated) return
+
+    let timeoutId: ReturnType<typeof setTimeout>
+
+    const handleTimeout = async () => {
+      await logout()
+      toast.warning('Session expired. Please login again.')
+      window.location.href = '/login'
+    }
+
+    const resetTimeout = () => {
+      clearTimeout(timeoutId)
+      timeoutId = setTimeout(handleTimeout, SESSION_TIMEOUT)
+    }
+
+    const events = ['mousedown', 'keydown', 'scroll', 'touchstart']
+    events.forEach(event => document.addEventListener(event, resetTimeout))
+    resetTimeout()
+
+    return () => {
+      clearTimeout(timeoutId)
+      events.forEach(event => document.removeEventListener(event, resetTimeout))
+    }
+  }, [isAuthenticated, logout])
 
   const value: AuthContextType = {
     user,
@@ -153,42 +159,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     logout,
     isAuthenticated,
     isLoading,
-    verifySession
   }
-
-  // Session timeout implementation
-  useEffect(() => {
-    if (!isAuthenticated) return
-
-    let timeoutId: number
-
-    const handleLogout = async () => {
-      await logout()
-      toast.warning('Session expired. Please login again.')
-      window.location.href = '/login'
-    }
-
-    const resetTimeout = () => {
-      if (timeoutId) clearTimeout(timeoutId)
-      timeoutId = setTimeout(handleLogout, SESSION_TIMEOUT)
-    }
-
-    const events = ['mousedown', 'keydown', 'scroll', 'touchstart']
-    const resetOnActivity = () => resetTimeout()
-
-    events.forEach(event => {
-      document.addEventListener(event, resetOnActivity)
-    })
-
-    resetTimeout()
-
-    return () => {
-      if (timeoutId) clearTimeout(timeoutId)
-      events.forEach(event => {
-        document.removeEventListener(event, resetOnActivity)
-      })
-    }
-  }, [isAuthenticated, logout])
 
   return (
     <AuthContext.Provider value={value}>

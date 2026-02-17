@@ -378,25 +378,32 @@ export default function InvoicePDF({ invoice }: { invoice: Invoice }) {
         });
     }
 
-    // Multi-page pagination logic
-    const itemsPerPage = 30; // Fill pages completely with items
-    const minRowsLastPage = 15; // Minimum rows on last page to make room for footer
-    const totalPages = Math.ceil(items.length / itemsPerPage);
+    // Multi-page pagination — first page fits fewer items due to the large header
+    const itemsFirstPage = 26;
+    const itemsPerContinuationPage = 30;
+    const minRowsLastPage = 15;
 
     // Split items into pages
     const pages: InvoiceItem[][] = [];
-    for (let i = 0; i < totalPages; i++) {
-        const start = i * itemsPerPage;
-        const end = Math.min(start + itemsPerPage, items.length);
-        pages.push(items.slice(start, end));
+    if (items.length <= itemsFirstPage) {
+        pages.push(items);
+    } else {
+        pages.push(items.slice(0, itemsFirstPage));
+        let cursor = itemsFirstPage;
+        while (cursor < items.length) {
+            const end = Math.min(cursor + itemsPerContinuationPage, items.length);
+            pages.push(items.slice(cursor, end));
+            cursor = end;
+        }
     }
+    const totalPages = pages.length;
 
     return (
         <Document>
             {pages.map((pageItems: InvoiceItem[], pageIndex) => {
                 const isFirstPage = pageIndex === 0;
                 const isLastPage = pageIndex === totalPages - 1;
-                const startItemIndex = pageIndex * itemsPerPage;
+                const startItemIndex = isFirstPage ? 0 : itemsFirstPage + (pageIndex - 1) * itemsPerContinuationPage;
 
                 // Only add empty rows on the last page
                 const emptyRows = isLastPage && pageItems.length < minRowsLastPage

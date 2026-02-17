@@ -15,10 +15,9 @@ import { Badge } from "@/components/ui/badge"
 import {
     MoreHorizontal, Plus, Search, FileText, Printer, Trash2,
     ChevronLeft, ChevronRight, Download, Eye, IndianRupee,
-    Calendar, User, Car, X, ClipboardList, Send, ArrowRightLeft, Clock, CheckCircle
+    Calendar, User, Car, X, ClipboardList, Send, ArrowRightLeft, Clock, CheckCircle, AlertTriangle
 } from "lucide-react"
 import { format } from "date-fns"
-import { escape } from "lodash"
 import { Link, useNavigate } from "react-router-dom"
 import { useState, useMemo } from "react"
 import { useEstimations, useDeleteEstimation, useUpdateEstimationStatus, useConvertToInvoice } from "@/hooks/useEstimations"
@@ -28,6 +27,14 @@ import { pdf } from "@react-pdf/renderer"
 import EstimationPDF from "@/components/estimation/EstimationPDF"
 import { toast } from "sonner"
 import { api } from "@/lib/api"
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from "@/components/ui/dialog"
 
 const statusConfig: Record<string, { color: string; label: string }> = {
     draft: { color: 'bg-gray-100 text-gray-700 hover:bg-gray-200', label: 'Draft' },
@@ -43,6 +50,8 @@ export function EstimationList() {
     const [limit, setLimit] = useState(10)
     const [search, setSearch] = useState("")
     const [statusFilter, setStatusFilter] = useState("all")
+    const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
+    const [estimationToDelete, setEstimationToDelete] = useState<Estimation | null>(null)
 
     const { data: estimationData, isLoading, error } = useEstimations(page, limit)
     const deleteEstimation = useDeleteEstimation()
@@ -74,11 +83,10 @@ export function EstimationList() {
         }
     }
 
-    const handleSend = async (estimation: Estimation) => {
-        if (estimation.status !== 'draft') return
+    const handleStatusChange = async (estimation: Estimation, newStatus: string, label: string) => {
         try {
-            await updateStatus.mutateAsync({ id: estimation.id, status: 'sent' })
-            toast.success("Estimation marked as sent")
+            await updateStatus.mutateAsync({ id: estimation.id, status: newStatus })
+            toast.success(`Estimation marked as ${label}`)
         } catch { /* error handled in hook */ }
     }
 
@@ -240,13 +248,13 @@ export function EstimationList() {
                         </div>
 
                         <Tabs value={statusFilter} onValueChange={setStatusFilter} className="w-full lg:w-auto">
-                            <TabsList className="grid w-full grid-cols-6 lg:w-auto">
-                                <TabsTrigger value="all" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white">All</TabsTrigger>
-                                <TabsTrigger value="draft" className="data-[state=active]:bg-gray-600 data-[state=active]:text-white">Draft</TabsTrigger>
-                                <TabsTrigger value="sent" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white">Sent</TabsTrigger>
-                                <TabsTrigger value="accepted" className="data-[state=active]:bg-green-600 data-[state=active]:text-white">Accepted</TabsTrigger>
-                                <TabsTrigger value="rejected" className="data-[state=active]:bg-red-600 data-[state=active]:text-white">Rejected</TabsTrigger>
-                                <TabsTrigger value="converted" className="data-[state=active]:bg-purple-600 data-[state=active]:text-white">Converted</TabsTrigger>
+                            <TabsList className="flex w-full overflow-x-auto lg:w-auto">
+                                <TabsTrigger value="all" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white flex-shrink-0">All</TabsTrigger>
+                                <TabsTrigger value="draft" className="data-[state=active]:bg-gray-600 data-[state=active]:text-white flex-shrink-0">Draft</TabsTrigger>
+                                <TabsTrigger value="sent" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white flex-shrink-0">Sent</TabsTrigger>
+                                <TabsTrigger value="accepted" className="data-[state=active]:bg-green-600 data-[state=active]:text-white flex-shrink-0">Accepted</TabsTrigger>
+                                <TabsTrigger value="rejected" className="data-[state=active]:bg-red-600 data-[state=active]:text-white flex-shrink-0">Rejected</TabsTrigger>
+                                <TabsTrigger value="converted" className="data-[state=active]:bg-purple-600 data-[state=active]:text-white flex-shrink-0">Converted</TabsTrigger>
                             </TabsList>
                         </Tabs>
                     </div>
@@ -319,7 +327,7 @@ export function EstimationList() {
                                                     </div>
                                                     <div>
                                                         <p className="font-semibold text-sm text-gray-900">
-                                                            {escape(estimation.customer?.name)}
+                                                            {(estimation.customer?.name)}
                                                         </p>
                                                         <p className="text-xs text-gray-500">
                                                             {estimation.customer?.phone}
@@ -334,10 +342,10 @@ export function EstimationList() {
                                                     </div>
                                                     <div>
                                                         <p className="font-mono text-xs font-semibold text-gray-900 bg-gray-100 px-2 py-0.5 rounded">
-                                                            {escape(estimation.vehicle?.vehicle_number)}
+                                                            {(estimation.vehicle?.vehicle_number)}
                                                         </p>
                                                         <p className="text-xs text-gray-500 mt-0.5">
-                                                            {escape(estimation.vehicle?.model)}
+                                                            {(estimation.vehicle?.model)}
                                                         </p>
                                                     </div>
                                                 </div>
@@ -364,7 +372,7 @@ export function EstimationList() {
                                             <TableCell className="text-right">
                                                 <div className="flex items-center justify-end gap-2">
                                                     <Link to={`/estimations/${estimation.id}`}>
-                                                        <Button variant="ghost" size="icon" className="hover:bg-blue-50 hover:text-blue-600">
+                                                        <Button variant="ghost" size="icon" className="hover:bg-blue-50 hover:text-blue-600" aria-label="View estimation">
                                                             <Eye className="h-4 w-4" />
                                                         </Button>
                                                     </Link>
@@ -373,6 +381,7 @@ export function EstimationList() {
                                                         size="icon"
                                                         className="hover:bg-green-50 hover:text-green-600"
                                                         onClick={() => window.open(`/estimations/${estimation.id}/print`, '_blank')}
+                                                        aria-label="Print estimation"
                                                     >
                                                         <Printer className="h-4 w-4" />
                                                     </Button>
@@ -399,15 +408,28 @@ export function EstimationList() {
                                                                 <Download className="mr-2 h-4 w-4" />
                                                                 Download PDF
                                                             </DropdownMenuItem>
+                                                            {/* Status transitions based on current status */}
                                                             {estimation.status === 'draft' && (
-                                                                <DropdownMenuItem onClick={() => handleSend(estimation)}>
+                                                                <DropdownMenuItem onClick={() => handleStatusChange(estimation, 'sent', 'Sent')}>
                                                                     <Send className="mr-2 h-4 w-4" />
                                                                     Mark as Sent
                                                                 </DropdownMenuItem>
                                                             )}
+                                                            {estimation.status === 'sent' && (
+                                                                <>
+                                                                    <DropdownMenuItem onClick={() => handleStatusChange(estimation, 'accepted', 'Accepted')}>
+                                                                        <CheckCircle className="mr-2 h-4 w-4 text-green-600" />
+                                                                        Mark as Accepted
+                                                                    </DropdownMenuItem>
+                                                                    <DropdownMenuItem onClick={() => handleStatusChange(estimation, 'rejected', 'Rejected')}>
+                                                                        <X className="mr-2 h-4 w-4 text-red-600" />
+                                                                        Mark as Rejected
+                                                                    </DropdownMenuItem>
+                                                                </>
+                                                            )}
                                                             {estimation.status === 'accepted' && (
                                                                 <DropdownMenuItem onClick={() => handleConvert(estimation)}>
-                                                                    <ArrowRightLeft className="mr-2 h-4 w-4" />
+                                                                    <ArrowRightLeft className="mr-2 h-4 w-4 text-purple-600" />
                                                                     Convert to Invoice
                                                                 </DropdownMenuItem>
                                                             )}
@@ -423,9 +445,8 @@ export function EstimationList() {
                                                             <DropdownMenuItem
                                                                 className="text-red-600 focus:text-red-600 focus:bg-red-50"
                                                                 onClick={() => {
-                                                                    if (confirm("Delete this estimation? This action cannot be undone.")) {
-                                                                        deleteEstimation.mutate(String(estimation.id))
-                                                                    }
+                                                                    setEstimationToDelete(estimation)
+                                                                    setIsDeleteDialogOpen(true)
                                                                 }}
                                                             >
                                                                 <Trash2 className="mr-2 h-4 w-4" />
@@ -448,7 +469,7 @@ export function EstimationList() {
             <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-white p-4 rounded-lg border shadow-sm">
                 <div className="flex items-center gap-6">
                     <span className="text-sm text-gray-600">
-                        Showing <span className="font-semibold text-gray-900">{((pagination.page - 1) * pagination.limit) + 1}</span> to{' '}
+                        Showing <span className="font-semibold text-gray-900">{pagination.total === 0 ? 0 : ((pagination.page - 1) * pagination.limit) + 1}</span> to{' '}
                         <span className="font-semibold text-gray-900">{Math.min(pagination.page * pagination.limit, pagination.total)}</span> of{' '}
                         <span className="font-semibold text-gray-900">{pagination.total}</span> entries
                     </span>
@@ -502,6 +523,49 @@ export function EstimationList() {
                     </Button>
                 </div>
             </div>
+
+            {/* Delete Confirmation Dialog */}
+            <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+                <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2 text-xl">
+                            <div className="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center">
+                                <AlertTriangle className="h-5 w-5 text-red-600" />
+                            </div>
+                            Delete Estimation
+                        </DialogTitle>
+                        <DialogDescription className="pt-2">
+                            Are you sure you want to delete estimation{' '}
+                            <span className="font-semibold text-gray-900">{estimationToDelete?.estimation_number}</span>?
+                            This action cannot be undone.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter className="gap-2 sm:gap-0">
+                        <Button
+                            variant="outline"
+                            onClick={() => setIsDeleteDialogOpen(false)}
+                            className="sm:mr-2"
+                        >
+                            Cancel
+                        </Button>
+                        <Button
+                            variant="destructive"
+                            onClick={() => {
+                                if (estimationToDelete) {
+                                    deleteEstimation.mutate(String(estimationToDelete.id))
+                                    setIsDeleteDialogOpen(false)
+                                    setEstimationToDelete(null)
+                                }
+                            }}
+                            disabled={deleteEstimation.isPending}
+                            className="bg-red-600 hover:bg-red-700"
+                        >
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            Delete Estimation
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     )
 }

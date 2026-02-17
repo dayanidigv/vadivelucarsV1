@@ -2,8 +2,7 @@ import { Context, Next } from 'hono'
 import { verify } from 'hono/jwt'
 import { getSupabaseClient, Env } from '../lib/supabase'
 
-// JWT Secret for customer tokens
-const CUSTOMER_JWT_SECRET = 'vadivelu-cars-customer-secret-key'
+// Unused constant removed — using c.env.CUSTOMER_JWT_SECRET instead
 
 export interface CustomerAuthContext {
   customerId: string
@@ -42,7 +41,7 @@ export async function customerAuthMiddleware(c: Context<{ Bindings: Env }>, next
     const supabase = getSupabaseClient(c.env)
     const { data: session, error } = await supabase
       .from('customer_sessions')
-      .select('*')
+      .select('expires_at')
       .eq('session_token', payload.sessionId)
       .eq('customer_id', payload.customerId)
       .single()

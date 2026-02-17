@@ -11,7 +11,7 @@ const navigation = [
     { name: 'Parts', href: '/parts', icon: Package, roles: ['admin', 'manager', 'staff', 'technician'] },
     { name: 'Users', href: '/users', icon: UserIcon, roles: ['admin', 'manager'] },
     { name: 'Reports', href: '/reports', icon: BarChart3, roles: ['admin'] },
-    { name: 'Settings', href: '/settings', icon: Settings, roles: ['super-admin'] },
+    { name: 'Settings', href: '/settings', icon: Settings, roles: ['admin'] },
 ]
 
 export function AdminLayout() {
@@ -53,7 +53,7 @@ export function AdminLayout() {
         <div className="min-h-screen bg-gray-50 flex flex-col">
             {/* Header */}
             <header className="bg-white border-b border-gray-200 sticky top-0 z-50 shadow-sm">
-                <div className="max-w-10xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div className="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="flex justify-between items-center h-16">
                         {/* Logo Section */}
                         <div className="flex items-center space-x-3">
@@ -143,6 +143,7 @@ export function AdminLayout() {
                             <button
                                 onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
                                 className="lg:hidden flex items-center justify-center w-10 h-10 rounded-lg hover:bg-gray-100 transition-colors"
+                                aria-label={isMobileMenuOpen ? 'Close menu' : 'Open menu'}
                             >
                                 {isMobileMenuOpen ? (
                                     <X className="h-6 w-6 text-gray-600" />
@@ -156,27 +157,33 @@ export function AdminLayout() {
 
                 {/* Mobile Navigation */}
                 {isMobileMenuOpen && (
-                    <div className="lg:hidden border-t border-gray-200 bg-white">
-                        <nav className="px-4 py-4 space-y-1">
-                            {filteredNavigation.map((item) => {
-                                const Icon = item.icon
-                                const isActive = location.pathname === item.href || (item.href !== '/dashboard' && location.pathname.startsWith(item.href))
-                                return (
-                                    <Link
-                                        key={item.name}
-                                        to={item.href}
-                                        className={`flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all ${isActive
-                                            ? 'bg-[#065DE5] text-white shadow-md'
-                                            : 'text-gray-700 hover:bg-gray-100'
-                                            }`}
-                                    >
-                                        <Icon className="h-5 w-5" />
-                                        <span>{item.name}</span>
-                                    </Link>
-                                )
-                            })}
-                        </nav>
-                    </div>
+                    <>
+                        <div
+                            className="lg:hidden fixed inset-0 bg-black/30 z-40"
+                            onClick={() => setIsMobileMenuOpen(false)}
+                        />
+                        <div className="lg:hidden border-t border-gray-200 bg-white relative z-50">
+                            <nav className="px-4 py-4 space-y-1">
+                                {filteredNavigation.map((item) => {
+                                    const Icon = item.icon
+                                    const isActive = location.pathname === item.href || (item.href !== '/dashboard' && location.pathname.startsWith(item.href))
+                                    return (
+                                        <Link
+                                            key={item.name}
+                                            to={item.href}
+                                            className={`flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all ${isActive
+                                                ? 'bg-[#065DE5] text-white shadow-md'
+                                                : 'text-gray-700 hover:bg-gray-100'
+                                                }`}
+                                        >
+                                            <Icon className="h-5 w-5" />
+                                            <span>{item.name}</span>
+                                        </Link>
+                                    )
+                                })}
+                            </nav>
+                        </div>
+                    </>
                 )}
             </header>
 

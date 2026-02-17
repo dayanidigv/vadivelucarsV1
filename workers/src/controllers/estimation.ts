@@ -60,21 +60,31 @@ export async function list(c: Context) {
         const page = parseInt(c.req.query('page') || '1')
         const limit = parseInt(c.req.query('limit') || '20')
         const status = c.req.query('status')
+        const search = c.req.query('search') || ''
         const offset = (page - 1) * limit
 
         let query = supabase
             .from('estimations')
             .select(`
-                *,
-                customer:customers(*),
-                vehicle:vehicles(*)
-            `, { count: 'exact' })
-            .order('created_at', { ascending: false })
-            .range(offset, offset + limit - 1)
+                id, estimation_number, status, grand_total, parts_total, labor_total,
+                discount_amount, notes, created_at, estimation_date, validity_period,
+                customer:customers(id, name, phone, email),
+                vehicle:vehicles(id, vehicle_number, make, model)
+            `, { count: 'estimated' })
 
+        // Apply search filter
+        if (search.trim()) {
+            query = query.or(`estimation_number.ilike.%${search}%,customer.name.ilike.%${search}%,vehicle.vehicle_number.ilike.%${search}%`)
+        }
+
+        // Apply status filter
         if (status && status !== 'all') {
             query = query.eq('status', status)
         }
+
+        query = query
+            .order('created_at', { ascending: false })
+            .range(offset, offset + limit - 1)
 
         const { data, error, count } = await query
 
@@ -107,8 +117,8 @@ export async function get(c: Context) {
         .from('estimations')
         .select(`
             *,
-            customer:customers(*, vehicles(*)),
-            vehicle:vehicles(*),
+            customer:customers(id, name, phone, email, address),
+            vehicle:vehicles(id, vehicle_number, make, model, year),
             items:estimation_items(*)
         `)
         .eq('id', id)

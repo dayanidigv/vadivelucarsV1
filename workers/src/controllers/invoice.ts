@@ -67,22 +67,38 @@ export async function list(c: Context) {
 
         const pageQuery = c.req.query('page')
         const limitQuery = c.req.query('limit')
+        const search = c.req.query('search') || ''
+        const status = c.req.query('status') || ''
 
         const page = pageQuery ? parseInt(pageQuery) : 1
         const limit = limitQuery ? parseInt(limitQuery) : 20
         const offset = (page - 1) * limit
 
-        console.log(`[InvoiceList] Fetching page=${page}, limit=${limit}, offset=${offset}`)
-
-        const { data, error, count } = await supabase
+        let query = supabase
             .from('invoices')
             .select(`
-                *,
-                customer:customers(*),
-                vehicle:vehicles(*)
-            `, { count: 'exact' })
+                id, invoice_number, payment_status, payment_method, grand_total,
+                parts_total, labor_total, discount_amount, paid_amount, balance_amount,
+                notes, created_at, invoice_date, mileage,
+                customer:customers(id, name, phone, email),
+                vehicle:vehicles(id, vehicle_number, make, model)
+            `, { count: 'estimated' })
+
+        // Apply search filter
+        if (search.trim()) {
+            query = query.or(`invoice_number.ilike.%${search}%,customer.name.ilike.%${search}%,vehicle.vehicle_number.ilike.%${search}%`)
+        }
+
+        // Apply status filter
+        if (status && status !== 'all') {
+            query = query.eq('payment_status', status)
+        }
+
+        query = query
             .order('created_at', { ascending: false })
             .range(offset, offset + limit - 1)
+
+        const { data, error, count } = await query
 
         if (error) {
             console.error('[InvoiceList] Supabase error:', error)
@@ -112,11 +128,11 @@ export async function get(c: Context) {
     const { data, error } = await supabase
         .from('invoices')
         .select(`
-      *,
-      customer:customers(*, vehicles(*)),
-      vehicle:vehicles(*),
-      items:invoice_items(*)
-    `)
+            *,
+            customer:customers(id, name, phone, email, address),
+            vehicle:vehicles(id, vehicle_number, make, model, year),
+            items:invoice_items(*)
+        `)
         .eq('id', id)
         .single()
 
@@ -428,4 +444,40 @@ export async function remove(c: Context) {
     }
 
     return c.json({ success: true, message: 'Invoice deleted' })
+}
+
+export async function stats(c: Context) {
+    try {
+        const supabase = getSupabaseClient(c.env)
+
+        // Get all invoices for stats calculation
+        const { data: invoices, error } = await supabase
+            .from('invoices')
+            .select('grand_total, payment_status')
+
+        if (error) {
+            console.error('[InvoiceStats] Supabase error:', error)
+            return c.json({ error: error.message }, 400)
+        }
+
+        // Calculate all-time stats
+        const totalRevenue = invoices?.reduce((sum, inv) => sum + parseFloat(String(inv.grand_total || 0)), 0) || 0
+        const paidCount = invoices?.filter(inv => inv.payment_status === 'paid').length || 0
+        const unpaidCount = invoices?.filter(inv => inv.payment_status === 'unpaid' || inv.payment_status === 'pending').length || 0
+        const partialCount = invoices?.filter(inv => inv.payment_status === 'partial').length || 0
+
+        return c.json({
+            success: true,
+            data: {
+                totalRevenue,
+                paidCount,
+                unpaidCount,
+                partialCount,
+                totalCount: invoices?.length || 0
+            }
+        })
+    } catch (e: any) {
+        console.error('[InvoiceStats] Internal error:', e)
+        return c.json({ error: e.message || 'Internal Server Error' }, 500)
+    }
 }

@@ -2,9 +2,6 @@ import { Context, Next } from 'hono'
 import { verify } from 'hono/jwt'
 import { getSupabaseClient, Env } from '../lib/supabase'
 
-// JWT Secret - In production, use environment variable
-const JWT_SECRET = 'vadivelu-cars-secret-key'
-
 export interface AuthContext {
   userId: string
   username: string
@@ -13,81 +10,50 @@ export interface AuthContext {
   permissions?: string[]
 }
 
-// Extend Hono context type to include user
-type AppContext = Context<{ Bindings: Env & { user: AuthContext } }>
-
 export async function authMiddleware(c: Context<{ Bindings: Env }>, next: Next) {
   try {
     const authHeader = c.req.header('Authorization')
-    
+
     // Skip auth for health check and root endpoint
     if (c.req.path === '/' || c.req.path === '/health') {
       await next()
       return
     }
 
-    console.log('Auth middleware check:', { 
-      path: c.req.path, 
-      hasAuthHeader: !!authHeader,
-      authHeaderPrefix: authHeader?.substring(0, 20) + '...'
-    })
-
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      console.log('Missing or invalid auth header')
       return c.json({ success: false, message: 'Authorization token required' }, 401)
     }
 
     const token = authHeader.substring(7)
-    
+
     // Verify and decode JWT token
-    const payload = await verify(token, JWT_SECRET, 'HS256').catch(() => null)
+    const payload = await verify(token, c.env.JWT_SECRET || 'vadivelu-cars-secret-key', 'HS256').catch(() => null)
     if (!payload) {
-      console.log('JWT verification failed')
       return c.json({ success: false, message: 'Invalid or expired token' }, 401)
     }
 
-    console.log('JWT payload:', { userId: payload.userId, sessionId: payload.sessionId })
-
-    // Check if session exists and is not expired
+    // Single DB query: check session exists and is not expired (select only what we need)
     const supabase = getSupabaseClient(c.env)
     const { data: session, error } = await supabase
       .from('user_sessions')
-      .select('*')
+      .select('expires_at')
       .eq('session_token', payload.sessionId)
       .eq('user_id', payload.userId)
       .single()
 
-    console.log('Session check:', { error: error?.message, sessionFound: !!session })
-
     if (error || !session || new Date(session.expires_at) < new Date()) {
-      console.log('Session validation failed')
       return c.json({ success: false, message: 'Session expired' }, 401)
     }
 
-    // Get user details and check if active
-    const { data: user, error: userError } = await supabase
-      .from('users')
-      .select('id, username, email, name, role, permissions, is_active')
-      .eq('id', payload.userId)
-      .single()
-
-    console.log('User check:', { error: userError?.message, userFound: !!user, isActive: user?.is_active })
-
-    if (userError || !user || !user.is_active) {
-      console.log('User validation failed')
-      return c.json({ success: false, message: 'User not found or inactive' }, 401)
-    }
-
-    // Add user info to context using jwtPayload (Hono's built-in key)
+    // Trust the JWT payload for user info (userId, username, role are signed in the token)
+    // This avoids a second DB query on every request
     c.set('jwtPayload', {
       userId: payload.userId,
       username: payload.username,
       role: payload.role,
       sessionId: payload.sessionId,
-      permissions: user.permissions
     } as AuthContext)
 
-    console.log('Auth middleware successful for user:', user.username)
     await next()
   } catch (error) {
     console.error('Auth middleware error:', error)

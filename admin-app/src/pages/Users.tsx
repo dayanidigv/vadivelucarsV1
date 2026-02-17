@@ -101,8 +101,12 @@ export default function Users() {
     e.preventDefault()
     try {
       if (editingUser) {
-        // Update user
-        const response = await api.updateUser(editingUser.id, formData)
+        // Update user - strip empty password
+        const updateData = { ...formData }
+        if (!updateData.password) {
+          delete updateData.password
+        }
+        const response = await api.updateUser(editingUser.id, updateData)
         if (response.success) {
           toast.success('User updated successfully')
           setIsEditDialogOpen(false)
@@ -405,7 +409,22 @@ export default function Users() {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {users.map((user) => (
+                  {users.length === 0 ? (
+                    <tr>
+                      <td colSpan={5} className="px-6 py-12">
+                        <div className="flex flex-col items-center justify-center text-center">
+                          <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mb-3">
+                            <UsersIcon className="h-6 w-6 text-gray-400" />
+                          </div>
+                          <p className="text-sm font-medium text-gray-900">No users found</p>
+                          <p className="text-xs text-gray-500 mt-1">
+                            {search ? 'Try adjusting your search' : 'Add your first user to get started'}
+                          </p>
+                        </div>
+                      </td>
+                    </tr>
+                  ) : (
+                  users.map((user) => (
                     <tr key={user.id}>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div>
@@ -434,12 +453,13 @@ export default function Users() {
                         {user.last_login ? new Date(user.last_login).toLocaleDateString() : 'Never'}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                        <div className="flex justify-end space-x-2">
+                        <div className="flex justify-end flex-wrap gap-1">
                           <Button
                             variant="outline"
                             size="sm"
                             onClick={() => handleEdit(user)}
                             className="h-8 w-8 p-0"
+                            aria-label="Edit user"
                           >
                             <Edit className="h-4 w-4" />
                           </Button>
@@ -448,6 +468,7 @@ export default function Users() {
                             size="sm"
                             onClick={() => confirmResetPassword(user)}
                             className="h-8 w-8 p-0"
+                            aria-label="Reset password"
                           >
                             <Key className="h-4 w-4" />
                           </Button>
@@ -456,6 +477,7 @@ export default function Users() {
                             size="sm"
                             onClick={() => confirmToggleStatus(user)}
                             className="h-8 w-8 p-0"
+                            aria-label={user.is_active ? 'Deactivate user' : 'Activate user'}
                           >
                             {user.is_active ? <ToggleLeft className="h-4 w-4" /> : <ToggleRight className="h-4 w-4" />}
                           </Button>
@@ -464,13 +486,15 @@ export default function Users() {
                             size="sm"
                             onClick={() => confirmDelete(user)}
                             className="text-red-600 hover:text-red-700 h-8 w-8 p-0 border-red-200 hover:bg-red-50"
+                            aria-label="Delete user"
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
                         </div>
                       </td>
                     </tr>
-                  ))}
+                  ))
+                  )}
                 </tbody>
               </table>
             </div>
