@@ -237,7 +237,6 @@ export function ImageUploadDialog({ onItemsExtracted, trigger }: ImageUploadDial
                             ref={fileInputRef}
                             type="file"
                             accept="image/*"
-                            capture="environment"
                             className="hidden"
                             onChange={handleFileSelect}
                         />
