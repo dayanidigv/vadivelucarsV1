@@ -69,20 +69,28 @@ export async function list(c: Context) {
         const limitQuery = c.req.query('limit')
         const search = c.req.query('search') || ''
         const status = c.req.query('status') || ''
+        const includeItems = c.req.query('include_items') === 'true'
 
         const page = pageQuery ? parseInt(pageQuery) : 1
         const limit = limitQuery ? parseInt(limitQuery) : 20
         const offset = (page - 1) * limit
 
-        let query = supabase
-            .from('invoices')
-            .select(`
-                id, invoice_number, payment_status, payment_method, grand_total,
+        const selectFields = includeItems
+            ? `id, invoice_number, payment_status, payment_method, grand_total,
                 parts_total, labor_total, discount_amount, paid_amount, balance_amount,
                 notes, created_at, invoice_date, mileage,
                 customer:customers(id, name, phone, email),
-                vehicle:vehicles(id, vehicle_number, make, model)
-            `, { count: 'estimated' })
+                vehicle:vehicles(id, vehicle_number, make, model),
+                items:invoice_items(*)`
+            : `id, invoice_number, payment_status, payment_method, grand_total,
+                parts_total, labor_total, discount_amount, paid_amount, balance_amount,
+                notes, created_at, invoice_date, mileage,
+                customer:customers(id, name, phone, email),
+                vehicle:vehicles(id, vehicle_number, make, model)`
+
+        let query = supabase
+            .from('invoices')
+            .select(selectFields, { count: 'estimated' })
 
         // Apply search filter
         if (search.trim()) {

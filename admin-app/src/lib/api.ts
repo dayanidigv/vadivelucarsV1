@@ -161,10 +161,11 @@ export class ApiClient {
     }
 
     // Invoices
-    async getInvoices(page = 1, limit = 20, search = '', status = '') {
+    async getInvoices(page = 1, limit = 20, search = '', status = '', includeItems = false) {
         let url = `/api/invoices?page=${page}&limit=${limit}`
         if (search) url += `&search=${encodeURIComponent(search)}`
         if (status && status !== 'all') url += `&status=${status}`
+        if (includeItems) url += `&include_items=true`
         return this.request<ApiResponse<Invoice[]>>(url)
     }
 
@@ -364,9 +365,10 @@ export class ApiClient {
     }
 
     // Estimations
-    async getEstimations(page = 1, limit = 20, status?: string) {
+    async getEstimations(page = 1, limit = 20, status?: string, includeItems = false) {
         let url = `/api/estimations?page=${page}&limit=${limit}`
         if (status && status !== 'all') url += `&status=${status}`
+        if (includeItems) url += `&include_items=true`
         return this.request<ApiResponse<Estimation[]>>(url)
     }
 

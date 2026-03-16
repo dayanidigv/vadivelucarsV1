@@ -61,16 +61,23 @@ export async function list(c: Context) {
         const limit = parseInt(c.req.query('limit') || '20')
         const status = c.req.query('status')
         const search = c.req.query('search') || ''
+        const includeItems = c.req.query('include_items') === 'true'
         const offset = (page - 1) * limit
+
+        const selectFields = includeItems
+            ? `id, estimation_number, status, grand_total, parts_total, labor_total,
+                discount_amount, notes, created_at, estimation_date, validity_period,
+                customer:customers(id, name, phone, email),
+                vehicle:vehicles(id, vehicle_number, make, model),
+                items:estimation_items(*)`
+            : `id, estimation_number, status, grand_total, parts_total, labor_total,
+                discount_amount, notes, created_at, estimation_date, validity_period,
+                customer:customers(id, name, phone, email),
+                vehicle:vehicles(id, vehicle_number, make, model)`
 
         let query = supabase
             .from('estimations')
-            .select(`
-                id, estimation_number, status, grand_total, parts_total, labor_total,
-                discount_amount, notes, created_at, estimation_date, validity_period,
-                customer:customers(id, name, phone, email),
-                vehicle:vehicles(id, vehicle_number, make, model)
-            `, { count: 'estimated' })
+            .select(selectFields, { count: 'estimated' })
 
         // Apply search filter
         if (search.trim()) {

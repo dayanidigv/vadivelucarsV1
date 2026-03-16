@@ -47,6 +47,7 @@ import { toast } from "sonner"
 import { Combobox } from "@/components/ui/combobox"
 import RecentlyUsedParts from "@/components/invoice/RecentlyUsedParts"
 import { ImageUploadDialog } from "@/components/invoice/ImageUploadDialog"
+import { ImportItemsDialog } from "@/components/shared/ImportItemsDialog"
 import { Textarea } from "@/components/ui/textarea"
 import { CreateCustomerDialog } from "@/components/customer/CreateCustomerDialog"
 import type { Customer } from "@/types"
@@ -850,6 +851,22 @@ export default function CreateInvoice() {
                                 </div>
                             </div>
                             <div className="flex items-center gap-2">
+                                <ImportItemsDialog
+                                    source="estimation"
+                                    onItemsImported={(items) => {
+                                        items.forEach((item) => append({
+                                            part_id: item.part_id,
+                                            description: item.description,
+                                            category: item.category,
+                                            item_type: item.item_type,
+                                            quantity: item.quantity,
+                                            rate: item.rate,
+                                            unit_price: item.unit_price,
+                                            unit: item.unit,
+                                            amount: item.amount,
+                                        }))
+                                    }}
+                                />
                                 <ImageUploadDialog
                                     onItemsExtracted={(items) => {
                                         items.forEach((item) => {

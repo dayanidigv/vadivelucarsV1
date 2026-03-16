@@ -29,6 +29,7 @@ import { encryptData, decryptData } from "@/lib/crypto"
 import { toast } from "sonner"
 import { Combobox } from "@/components/ui/combobox"
 import { ImageUploadDialog } from "@/components/invoice/ImageUploadDialog"
+import { ImportItemsDialog } from "@/components/shared/ImportItemsDialog"
 import { Textarea } from "@/components/ui/textarea"
 import { CreateCustomerDialog } from "@/components/customer/CreateCustomerDialog"
 import { Badge } from "@/components/ui/badge"
@@ -728,6 +729,24 @@ export default function CreateEstimation() {
                             </div>
                             {!isReadOnly && (
                                 <div className="flex items-center gap-2">
+                                    <ImportItemsDialog
+                                        source="invoice"
+                                        onItemsImported={(items) => {
+                                            items.forEach((item) => {
+                                                append({
+                                                    part_id: item.part_id,
+                                                    description: item.description,
+                                                    part_number: item.part_number || '',
+                                                    category: item.category,
+                                                    item_type: item.item_type,
+                                                    quantity: item.quantity,
+                                                    rate: item.rate,
+                                                    unit: item.unit,
+                                                    amount: item.amount,
+                                                })
+                                            })
+                                        }}
+                                    />
                                     <ImageUploadDialog
                                         onItemsExtracted={(items) => {
                                             items.forEach((item) => {
