@@ -81,6 +81,22 @@ export default function CreateEstimation() {
     const [selectedVehicle, setSelectedVehicle] = useState<any>(null)
     const [isClearDialogOpen, setIsClearDialogOpen] = useState(false)
     const [isSubmitting, setIsSubmitting] = useState(false)
+    const [showFloatingAdd, setShowFloatingAdd] = useState(true)
+    const [lastScrollY, setLastScrollY] = useState(0)
+
+    useEffect(() => {
+        const handleScroll = () => {
+            const currentScrollY = window.scrollY
+            if (currentScrollY > lastScrollY && currentScrollY > 100) {
+                setShowFloatingAdd(false)
+            } else {
+                setShowFloatingAdd(true)
+            }
+            setLastScrollY(currentScrollY)
+        }
+        window.addEventListener("scroll", handleScroll, { passive: true })
+        return () => window.removeEventListener("scroll", handleScroll)
+    }, [lastScrollY])
 
     const { data: searchResults, isLoading: isLoadingCustomers } = useSearchCustomers(customerSearch)
     const { data: partResults, isLoading: isLoadingParts } = useSearchParts(partSearch)
@@ -136,7 +152,7 @@ export default function CreateEstimation() {
         if (isEditMode && existingEstimation?.data) {
             const est = existingEstimation.data
             setSelectedCustomer(est.customer)
-            setSelectedVehicle(est.customer?.vehicles?.find((v: any) => v.id === est.vehicle_id))
+            setSelectedVehicle(est.vehicle || est.customer?.vehicles?.find((v: any) => v.id === est.vehicle_id))
 
             reset({
                 customer_id: est.customer_id,
@@ -996,7 +1012,9 @@ export default function CreateEstimation() {
 
             {/* Floating Save Button (Mobile) */}
             {!isReadOnly && (
-                <div className="fixed bottom-6 left-6 z-50 md:hidden">
+                <div className={`fixed bottom-6 left-6 z-50 transition-all duration-300 md:hidden ${
+                    showFloatingAdd ? "translate-y-0 opacity-100 scale-100" : "translate-y-20 opacity-0 scale-90 pointer-events-none"
+                }`}>
                     <Button
                         onClick={handleSubmit(onSubmit)}
                         disabled={createEstimation.isPending || updateEstimation.isPending}
@@ -1014,7 +1032,9 @@ export default function CreateEstimation() {
 
             {/* Floating Add Item Button */}
             {!isReadOnly && (
-                <div className="fixed bottom-6 right-6 z-50">
+                <div className={`fixed bottom-6 right-6 z-50 transition-all duration-300 md:hidden ${
+                    showFloatingAdd ? "translate-y-0 opacity-100 scale-100" : "translate-y-20 opacity-0 scale-90 pointer-events-none"
+                }`}>
                     <Button
                         type="button"
                         size="icon"

@@ -290,8 +290,16 @@ export class ApiClient {
         return this.request<ApiResponse<any>>('/api/dashboard')
     }
 
-    async getRevenueReports() {
-        return this.request<ApiResponse<any>>('/api/reports/revenue')
+    async getRevenueReports(params?: { range?: string; startDate?: string; endDate?: string }) {
+        let url = '/api/reports/revenue'
+        if (params) {
+            const q = new URLSearchParams()
+            if (params.range) q.append('range', params.range)
+            if (params.startDate) q.append('startDate', params.startDate)
+            if (params.endDate) q.append('endDate', params.endDate)
+            url += `?${q.toString()}`
+        }
+        return this.request<ApiResponse<any>>(url)
     }
 
     // Users Management

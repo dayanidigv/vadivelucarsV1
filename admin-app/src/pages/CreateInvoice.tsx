@@ -90,6 +90,22 @@ export default function CreateInvoice() {
     const [selectedVehicle, setSelectedVehicle] = useState<any>(null)
     const [isClearDialogOpen, setIsClearDialogOpen] = useState(false)
     const [isSubmitting, setIsSubmitting] = useState(false)
+    const [showFloatingAdd, setShowFloatingAdd] = useState(true)
+    const [lastScrollY, setLastScrollY] = useState(0)
+
+    useEffect(() => {
+        const handleScroll = () => {
+            const currentScrollY = window.scrollY
+            if (currentScrollY > lastScrollY && currentScrollY > 100) {
+                setShowFloatingAdd(false)
+            } else {
+                setShowFloatingAdd(true)
+            }
+            setLastScrollY(currentScrollY)
+        }
+        window.addEventListener("scroll", handleScroll, { passive: true })
+        return () => window.removeEventListener("scroll", handleScroll)
+    }, [lastScrollY])
 
     // Queries
     const { data: searchResults, isLoading: isLoadingCustomers } = useSearchCustomers(customerSearch)
@@ -162,7 +178,7 @@ export default function CreateInvoice() {
         if (isEditMode && existingInvoice?.data) {
             const invoice = existingInvoice.data
             setSelectedCustomer(invoice.customer)
-            setSelectedVehicle(invoice.customer?.vehicles?.find((v: any) => v.id === invoice.vehicle_id))
+            setSelectedVehicle(invoice.vehicle || invoice.customer?.vehicles?.find((v: any) => v.id === invoice.vehicle_id))
 
             reset({
                 customer_id: invoice.customer_id,
@@ -1107,7 +1123,9 @@ export default function CreateInvoice() {
                 </DialogContent>
             </Dialog>
             {/* Floating Action Button for Mobile/Quick Save */}
-            <div className="fixed bottom-6 left-6 z-50 md:hidden">
+            <div className={`fixed bottom-6 left-6 z-50 transition-all duration-300 md:hidden ${
+                showFloatingAdd ? "translate-y-0 opacity-100 scale-100" : "translate-y-20 opacity-0 scale-90 pointer-events-none"
+            }`}>
                 <Button
                     onClick={handleSubmit(onSubmit)}
                     disabled={createInvoice.isPending || updateInvoice.isPending}
@@ -1123,7 +1141,9 @@ export default function CreateInvoice() {
             </div>
 
             {/* Floating Add Item Button */}
-            <div className="fixed bottom-6 right-6 z-50">
+            <div className={`fixed bottom-6 right-6 z-50 transition-all duration-300 md:hidden ${
+                showFloatingAdd ? "translate-y-0 opacity-100 scale-100" : "translate-y-20 opacity-0 scale-90 pointer-events-none"
+            }`}>
                 <Button
                     type="button"
                     size="icon"
