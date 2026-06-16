@@ -124,7 +124,7 @@ export async function get(c: Context) {
         .from('estimations')
         .select(`
             *,
-            customer:customers(id, name, phone, email, address),
+            customer:customers(id, name, phone, email, address, vehicles:vehicles(*)),
             vehicle:vehicles(id, vehicle_number, make, model, year),
             items:estimation_items(*)
         `)

@@ -42,7 +42,7 @@ app.use('/api/*', async (c, next) => {
         return
     }
     
-    await authMiddleware(c, next)
+    return await authMiddleware(c, next)
 })
 
 // Apply customer authentication middleware to customer routes
@@ -52,7 +52,7 @@ app.use('/api/customer/*', async (c, next) => {
         await next()
         return
     }
-    await customerAuthMiddleware(c, next)
+    return await customerAuthMiddleware(c, next)
 })
 
 // Routes
