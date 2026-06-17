@@ -90,22 +90,6 @@ export default function CreateInvoice() {
     const [selectedVehicle, setSelectedVehicle] = useState<any>(null)
     const [isClearDialogOpen, setIsClearDialogOpen] = useState(false)
     const [isSubmitting, setIsSubmitting] = useState(false)
-    const [showFloatingAdd, setShowFloatingAdd] = useState(true)
-    const [lastScrollY, setLastScrollY] = useState(0)
-
-    useEffect(() => {
-        const handleScroll = () => {
-            const currentScrollY = window.scrollY
-            if (currentScrollY > lastScrollY && currentScrollY > 100) {
-                setShowFloatingAdd(false)
-            } else {
-                setShowFloatingAdd(true)
-            }
-            setLastScrollY(currentScrollY)
-        }
-        window.addEventListener("scroll", handleScroll, { passive: true })
-        return () => window.removeEventListener("scroll", handleScroll)
-    }, [lastScrollY])
 
     // Queries
     const { data: searchResults, isLoading: isLoadingCustomers } = useSearchCustomers(customerSearch)
@@ -536,8 +520,8 @@ export default function CreateInvoice() {
                                 <Label className="flex items-center gap-1 text-sm">
                                     Customer <span className="text-red-500">*</span>
                                 </Label>
-                                <div className="flex gap-2">
-                                    <div className="flex-1">
+                                <div className="flex gap-2 items-center w-full min-w-0">
+                                    <div className="flex-1 min-w-0">
                                         <Combobox
                                             placeholder="Search customer..."
                                             searchPlaceholder="Type to search..."
@@ -588,21 +572,21 @@ export default function CreateInvoice() {
 
                             {selectedCustomer && (
                                 <>
-                                    <div className="bg-gray-50 rounded-lg p-3 space-y-2">
-                                        <div className="flex items-center gap-2">
+                                    <div className="bg-gray-50 rounded-lg p-3 space-y-2 w-full min-w-0">
+                                        <div className="flex items-center gap-2 min-w-0">
                                             <div className="w-8 h-8 bg-blue-600 text-white rounded-lg flex items-center justify-center font-semibold text-sm">
                                                 {selectedCustomer.name.charAt(0).toUpperCase()}
                                             </div>
                                             <div className="flex-1 min-w-0">
                                                 <p className="font-semibold text-sm text-gray-900 truncate">{selectedCustomer.name}</p>
-                                                <p className="text-xs text-gray-500">ID: #{selectedCustomer.id}</p>
+                                                <p className="text-xs text-gray-500 truncate" title={selectedCustomer.id}>ID: #{selectedCustomer.id}</p>
                                             </div>
                                         </div>
-                                        <div className="text-xs text-gray-600 space-y-1 pt-2 border-t border-gray-200">
-                                            <p>📱 {selectedCustomer.phone || "No phone"}</p>
-                                            {selectedCustomer.email && <p>📧 {escape(selectedCustomer.email)}</p>}
+                                        <div className="text-xs text-gray-600 space-y-1 pt-2 border-t border-gray-200 min-w-0">
+                                            <p className="truncate">📱 {selectedCustomer.phone || "No phone"}</p>
+                                            {selectedCustomer.email && <p className="truncate" title={selectedCustomer.email}>📧 {escape(selectedCustomer.email)}</p>}
                                             {selectedCustomer.address && (
-                                                <p className="line-clamp-2">📍 {escape(selectedCustomer.address)}</p>
+                                                <p className="line-clamp-2" title={selectedCustomer.address}>📍 {escape(selectedCustomer.address)}</p>
                                             )}
                                         </div>
                                     </div>
@@ -854,7 +838,7 @@ export default function CreateInvoice() {
                 {/* Right Column - Items (2 columns wide) */}
                 <Card className="lg:col-span-2">
                     <CardHeader className="pb-4">
-                        <div className="flex items-center justify-between">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                             <div className="flex items-center gap-3">
                                 <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
                                     <Package className="h-5 w-5 text-purple-600" />
@@ -866,7 +850,7 @@ export default function CreateInvoice() {
                                     </CardDescription>
                                 </div>
                             </div>
-                            <div className="flex items-center gap-2">
+                            <div className="flex flex-wrap items-center gap-2">
                                 <ImportItemsDialog
                                     source="estimation"
                                     onItemsImported={(items) => {
@@ -1123,9 +1107,7 @@ export default function CreateInvoice() {
                 </DialogContent>
             </Dialog>
             {/* Floating Action Button for Mobile/Quick Save */}
-            <div className={`fixed bottom-6 left-6 z-50 transition-all duration-300 md:hidden ${
-                showFloatingAdd ? "translate-y-0 opacity-100 scale-100" : "translate-y-20 opacity-0 scale-90 pointer-events-none"
-            }`}>
+            <div className="fixed bottom-6 left-6 z-50 md:hidden">
                 <Button
                     onClick={handleSubmit(onSubmit)}
                     disabled={createInvoice.isPending || updateInvoice.isPending}
@@ -1141,9 +1123,7 @@ export default function CreateInvoice() {
             </div>
 
             {/* Floating Add Item Button */}
-            <div className={`fixed bottom-6 right-6 z-50 transition-all duration-300 md:hidden ${
-                showFloatingAdd ? "translate-y-0 opacity-100 scale-100" : "translate-y-20 opacity-0 scale-90 pointer-events-none"
-            }`}>
+            <div className="fixed bottom-6 right-6 z-50 md:hidden">
                 <Button
                     type="button"
                     size="icon"
